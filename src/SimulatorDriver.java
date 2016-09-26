@@ -10,12 +10,13 @@
 public class SimulatorDriver {
 
 	public static void main(String[] args) {
-		int numOfClients = 5;
+		int numOfClients = 2;
 		int sizeOfClientCache = 5;
-		System.out.println("Main Memory size: " + SimulatorServer.memory.length);
-		SimulatorServer.setMemory();
+		System.out.println("Main Memory size: " + SimulatorDisk.memory.length);
+		SimulatorDisk.setMemory();
+		SimulatorServer.setServerMemory();
 		System.out.println("Main memory contents: ");
-		SimulatorServer.printMainMemory();
+		SimulatorDisk.printMainMemory();
 		System.out.println();
 		for(int i=1;i<=numOfClients;i++) {
 			SimulatorClient client = new SimulatorClient(i, sizeOfClientCache);

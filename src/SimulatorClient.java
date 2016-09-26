@@ -15,14 +15,14 @@ public class SimulatorClient extends Thread {
 	int dataInClient;
 	int dataToLookUp;
 	int LocalcacheHits = 0;
-	int SystemcacheHits = 0;
+	int NeighborcacheHits = 0;
 	int cacheMiss = 0;
 	static int clientCacheCounter = 0;
 	Thread client;
 	String clientName;
 	int clientBlockSize;
 	SimulatorCache clientCache;
-	SimulatorTickCounts tickCount;
+	SimulatorTickCounts mytickCount;
 	SimulatorLogger logFile;
 
 	public SimulatorClient(int clientNumber, int blockSize) {
@@ -66,9 +66,13 @@ public class SimulatorClient extends Thread {
 	}
 
 	public synchronized void run() {
+		/**
+		 * TODO: Algorithms are started here
+		 * This will have some log messages and beginning of algorithm execution.
+		 */
 		this.logFile = new SimulatorLogger(this.clientNumber);
-		logFile.writeToFile(this.clientNumber, "System cache size: " + SimulatorContentManager.sysCacheSize);
-		System.out.println("System cache size: " + SimulatorContentManager.sysCacheSize);
+		logFile.writeToFile(this.clientNumber, "System cache size: " + SimulatorServer.serverCacheSize);
+		System.out.println("System cache size: " + SimulatorServer.serverMemory);
 		logFile.writeToFile(this.clientNumber, "Client " + this.clientNumber); 
 		logFile.writeToFile(this.clientNumber, "Client cache size: " + this.clientBlockSize);
 		System.out.println();
@@ -76,7 +80,7 @@ public class SimulatorClient extends Thread {
 		this.generateRequestData();
 
 		logFile.writeToFile(this.clientNumber,"Local Cache Hits: " + this.LocalcacheHits);
-		logFile.writeToFile(this.clientNumber,"System Cache Hits: " + this.SystemcacheHits);
+		logFile.writeToFile(this.clientNumber,"System Cache Hits: " + this.NeighborcacheHits);
 		logFile.writeToFile(this.clientNumber,"Cache Miss: " + this.cacheMiss);
 	}
 
@@ -84,7 +88,7 @@ public class SimulatorClient extends Thread {
 		/**
 		 * TODO: This is for the input from trace file
 		 * */
-		
+
 		/*		Scanner scanner;
 		try {
 			scanner = new Scanner(new File("psuedodata.txt"));
@@ -120,15 +124,14 @@ public class SimulatorClient extends Thread {
 
 		Random random = new Random();
 
-		for(int i=0; i<25;i++) {
-			int reqData = random.nextInt(90)+1;
+		for(int i=0; i<5;i++) {
+			int reqData = random.nextInt(9)+1;
 			boolean answer = this.request_data(this.clientNumber,reqData);
 			logFile.writeToFile(this.clientNumber,"Counter: " + i);
 			System.out.println(answer);
 			this.printClientCache();
 			System.out.println();
-			System.out.println("After Update " + SimulatorContentManager.lookUpTable);
-			logFile.writeToFile(this.clientNumber,"After Update " + SimulatorContentManager.lookUpTable);
+//			logFile.writeToFile(this.clientNumber,"After Update " + SimulatorContentManager.lookUpTable);
 			logFile.writeToFile(this.clientNumber,"\n");
 			System.out.println();
 		}	
@@ -149,38 +152,56 @@ public class SimulatorClient extends Thread {
 
 		if(searchLocalCache(reqData) == true) { 
 			this.LocalcacheHits++;
-			System.out.println("System Cache: " + SimulatorContentManager.systemCache);
-			logFile.writeToFile(clientNum,"System Cache: " + SimulatorContentManager.systemCache);
-			found = true;
-			return found;
-		}
-
-		else if(SimulatorContentManager.searchContentManager(clientNum,reqData,logFile) == true) {
-			System.out.println("Searching content manager");
-
-			this.SystemcacheHits++;
-			updateLocalCache(reqData);
-			System.out.println("System Cache: " + SimulatorContentManager.systemCache);
-			logFile.writeToFile(clientNum,"System Cache: " + SimulatorContentManager.systemCache);
+//			System.out.println("Server Memory: " + SimulatorServer.serverMemory);
+//			logFile.writeToFile(clientNum,"Server Memory: " + SimulatorServer.serverMemory);
 			found = true;
 			return found;
 		}
 
 		else {
-			this.cacheMiss++;
-			System.out.println("Not found in content manager: ");
-			logFile.writeToFile(clientNum,"Not found in content manager: ");
-			System.out.println("Searching server memory");
-			logFile.writeToFile(clientNum,"Searching server memory");
-			found = fetchFromServer(clientNum,reqData);
-			System.out.println("--------------- " + found);
-			if(found == false) System.exit(0);
-			ArrayList<Integer> localCacheUpdated = updateLocalCache(reqData);
-			SimulatorContentManager.updateContentManager(clientNum,reqData,localCacheUpdated,logFile);
-			System.out.println("System Cache: " + SimulatorContentManager.systemCache);
-			logFile.writeToFile(clientNum,"System Cache: " + SimulatorContentManager.systemCache);
+			int whoHasData = SimulatorContentManager.searchNeighborCache(clientNum,reqData,logFile);
+			if(whoHasData != -1) {
+				int valueIwant = getDataFromNeighbor(whoHasData,clientNum,reqData);
+				if(valueIwant == -1) {
+					cacheMiss++;
+				}
+				else {
+					this.NeighborcacheHits++;
+					updateLocalCache(reqData);
+					found = true;
+					return found;
+				}
+			}
+
+			else {
+				System.out.println("Not found in content manager: ");
+				logFile.writeToFile(clientNum,"Not found in content manager: ");
+//				System.out.println("Searching server memory");
+//				logFile.writeToFile(clientNum,"Searching server memory");
+				searchServerMemm(clientNum,reqData,logFile);
+//				if(serverOrDisk != 0 || serverOrDisk != 1) System.exit(0);
+				ArrayList<Integer> localCacheUpdated = updateLocalCache(reqData);
+				SimulatorContentManager.updateContentManager(clientNum,reqData,localCacheUpdated,logFile);
+				System.out.println("After Update " + SimulatorContentManager.lookUpTable);
+//				System.out.println("System Cache: " + SimulatorServer.serverMemory);
+				logFile.writeToFile(clientNum,"serverMemory: " + SimulatorServer.serverMemory);
+				found = true;
+				return found;
+			}
 		}
 		return found;	
+	}
+
+	private int getDataFromNeighbor(int whoHasData,int whoAskedForData, int reqData) {
+		return -1;
+	}
+
+	/**
+	 * Search server
+	 * @param logFile 
+	 * */
+	private int searchServerMemm(int clientNum, int reqData, SimulatorLogger logFile) {
+		return SimulatorServer.searchMemory(clientNum,reqData,logFile);
 	}
 
 	private ArrayList<Integer> updateLocalCache(int req_data) {
@@ -196,12 +217,7 @@ public class SimulatorClient extends Thread {
 		return clientCache.cache;		
 	}
 
-	/**
-	 * Get data from server (main memory)
-	 * */
-	private boolean fetchFromServer(int clientNum, int req_data) {
-		return SimulatorServer.searchMemory(clientNum,req_data);	
-	}
+
 
 	/**
 	 * Search data in client's local cache

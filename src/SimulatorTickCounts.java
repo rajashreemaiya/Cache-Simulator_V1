@@ -7,18 +7,20 @@
  *
  */
 public class SimulatorTickCounts {
+	
+	 static final int READ = 1;
 
-	int tickCounts;
+	int tickCount;
 	
 	public SimulatorTickCounts() {
-		this.tickCounts = 0;
+		this.tickCount = 0;
 	}
 	
 	public int getTickCount() {
-		return tickCounts;
+		return tickCount;
 	}
 	
-	public void setTickCount() {
-		this.tickCounts++;
+	public int setTickCount(int operationCost) {
+		return this.tickCount + operationCost;
 	}
 }
