@@ -1,7 +1,6 @@
 import java.util.ArrayList;
 import java.util.Random;
 
-
 /**
  * This class initializes each client and it's operations
  */
@@ -24,14 +23,17 @@ public class SimulatorClient extends Thread {
 	SimulatorCache clientCache;
 	SimulatorTickCounts mytickCount;
 	SimulatorLogger logFile;
+	int[] clientTickCounts = new int[15];
 
 	public SimulatorClient(int clientNumber, int blockSize) {
 		this.clientBlockSize = this.setBlockSize(blockSize);
 		this.clientCache = new SimulatorCache(blockSize);
 		this.clientNumber = clientNumber;
+		this.mytickCount = new SimulatorTickCounts();
 		this.setBlockSize(blockSize);
 		this.fillClientCache();
-		SimulatorContentManager.lookUpTable.put(clientNumber, clientCache.cache);
+		SimulatorContentManager.lookUpTable
+				.put(clientNumber, clientCache.cache);
 	}
 
 	public int setBlockSize(int blockSize) {
@@ -47,8 +49,8 @@ public class SimulatorClient extends Thread {
 	 * */
 	private ArrayList<Integer> fillClientCache() {
 		Random random = new Random();
-		for(int i=0;i<clientBlockSize;i++) {
-			int value = random.nextInt(50)+1;
+		for (int i = 0; i < clientBlockSize; i++) {
+			int value = random.nextInt(50) + 1;
 			clientCache.cache.add(value);
 		}
 		return clientCache.cache;
@@ -59,29 +61,36 @@ public class SimulatorClient extends Thread {
 	 * Helper method to for printing
 	 * */
 	public void printClientCache() {
-		for(Integer j: clientCache.cache) {
-			System.out.print(j + " "); 
+		for (Integer j : clientCache.cache) {
+			System.out.print(j + " ");
 		}
 
 	}
 
 	public synchronized void run() {
 		/**
-		 * TODO: Algorithms are started here
-		 * This will have some log messages and beginning of algorithm execution.
+		 * TODO: Algorithms are started here This will have some log messages
+		 * and beginning of algorithm execution.
 		 */
 		this.logFile = new SimulatorLogger(this.clientNumber);
-		logFile.writeToFile(this.clientNumber, "System cache size: " + SimulatorServer.serverCacheSize);
-		System.out.println("System cache size: " + SimulatorServer.serverMemory);
-		logFile.writeToFile(this.clientNumber, "Client " + this.clientNumber); 
-		logFile.writeToFile(this.clientNumber, "Client cache size: " + this.clientBlockSize);
+		logFile.writeToFile(this.clientNumber, "System cache size: "
+				+ SimulatorServer.serverCacheSize);
+		logFile.writeToFile(this.clientNumber, "Client " + this.clientNumber);
+		logFile.writeToFile(this.clientNumber, "Client cache size: "
+				+ this.clientBlockSize);
 		System.out.println();
 
 		this.generateRequestData();
 
-		logFile.writeToFile(this.clientNumber,"Local Cache Hits: " + this.LocalcacheHits);
-		logFile.writeToFile(this.clientNumber,"System Cache Hits: " + this.NeighborcacheHits);
-		logFile.writeToFile(this.clientNumber,"Cache Miss: " + this.cacheMiss);
+		logFile.writeToFile(this.clientNumber, "Local Cache Hits: "
+				+ this.LocalcacheHits);
+		logFile.writeToFile(this.clientNumber, "System Cache Hits: "
+				+ this.NeighborcacheHits);
+		logFile.writeToFile(this.clientNumber, "Cache Miss: " + this.cacheMiss);
+
+		for(int k=0;k<clientTickCounts.length;k++)
+			logFile.writeToFile(this.clientNumber, "Tick counts table: "
+				+ clientTickCounts[k]);
 	}
 
 	private void generateRequestData() {
@@ -89,52 +98,54 @@ public class SimulatorClient extends Thread {
 		 * TODO: This is for the input from trace file
 		 * */
 
-		/*		Scanner scanner;
-		try {
-			scanner = new Scanner(new File("psuedodata.txt"));
-			ArrayList<Integer> inputData = new ArrayList<Integer>();
-	        while(scanner.hasNext()){
-	           inputData.add(Integer.parseInt(scanner.next()));
-	        }
-	        scanner.close();
-	        for(int i=0;i<inputData.size();i++) {
-	        	int reqData = inputData.get(i);
-				boolean answer = this.request_data(this.clientNumber,reqData);
-				logFile.writeToFile(this.clientNumber,"Counter: " + i);
-				System.out.println(answer);
-				this.printClientCache();
-				System.out.println();
-				System.out.println("After Update " + SimulatorContentManager.lookUpTable);
-				logFile.writeToFile(this.clientNumber,"After Update " + SimulatorContentManager.lookUpTable);
-				logFile.writeToFile(this.clientNumber,"\n");
-				System.out.println();
-	        }
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} */
+		/*
+		 * Scanner scanner; try { scanner = new Scanner(new
+		 * File("psuedodata.txt")); ArrayList<Integer> inputData = new
+		 * ArrayList<Integer>(); while(scanner.hasNext()){
+		 * inputData.add(Integer.parseInt(scanner.next())); } scanner.close();
+		 * for(int i=0;i<inputData.size();i++) { int reqBlock = inputData.get(i);
+		 * boolean answer = this.request_data(this.clientNumber,reqBlock);
+		 * logFile.writeToFile(this.clientNumber,"Counter: " + i);
+		 * System.out.println(answer); this.printClientCache();
+		 * System.out.println(); System.out.println("After Update " +
+		 * SimulatorContentManager.lookUpTable);
+		 * logFile.writeToFile(this.clientNumber,"After Update " +
+		 * SimulatorContentManager.lookUpTable);
+		 * logFile.writeToFile(this.clientNumber,"\n"); System.out.println(); }
+		 * } catch (FileNotFoundException e) { e.printStackTrace(); }
+		 */
 
 		/*
 		 * This is for testing with dummy data
-		 * */
+		 */
 
 		ArrayList<Integer> client_data = this.getClientCache();
 		SimulatorContentManager.lookUpTable.put(this.clientNumber, client_data);
-		System.out.println("lookup table: " + SimulatorContentManager.lookUpTable);
-		logFile.writeToFile(this.clientNumber,"lookup table: " + SimulatorContentManager.lookUpTable);
+		System.out.println("lookup table: "
+				+ SimulatorContentManager.lookUpTable);
+		logFile.writeToFile(this.clientNumber, "lookup table: "
+				+ SimulatorContentManager.lookUpTable);
 
 		Random random = new Random();
-
-		for(int i=0; i<15;i++) {
-			int reqData = random.nextInt(9)+1;
-			boolean answer = this.request_data(this.clientNumber,reqData);
-			logFile.writeToFile(this.clientNumber,"Counter: " + i);
+		
+		for (int i = 0; i < 15; i++) {
+			mytickCount.tickCount = 0;
+			int reqBlock = random.nextInt(9) + 1;
+			logFile.writeToFile(this.clientNumber,"lookup table: "
+					+ SimulatorContentManager.lookUpTable);
+			boolean answer = this.request_data(this.clientNumber, reqBlock);
+			logFile.writeToFile(this.clientNumber, "Counter: " + i);
+			logFile.writeToFile(this.clientNumber,"lookup table: "
+					+ SimulatorContentManager.lookUpTable);
 			System.out.println(answer);
 			this.printClientCache();
 			System.out.println();
-			//			logFile.writeToFile(this.clientNumber,"After Update " + SimulatorContentManager.lookUpTable);
-			logFile.writeToFile(this.clientNumber,"\n");
+			clientTickCounts[i] = mytickCount.getTickCount();
+			logFile.writeToFile(this.clientNumber, "ticks for " + i + " is  "
+					+ mytickCount.getTickCount());
+			logFile.writeToFile(this.clientNumber, "\n");
 			System.out.println();
-		}	
+		}
 	}
 
 	private ArrayList<Integer> getClientCache() {
@@ -142,107 +153,139 @@ public class SimulatorClient extends Thread {
 	}
 
 	/**
-	 * Method that says where the data was fetched from,
-	 * Always returns true since server always has the data
+	 * Method that says where the data was fetched from, Always returns true
+	 * since server always has the data
 	 * */
-	private boolean request_data(int clientNum, int reqData) {
-		System.out.println("Client " + clientNum + " is requesting the data " + reqData);
-		logFile.writeToFile(clientNum,"Client " + clientNum + " is requesting the data " + reqData);
+	private boolean request_data(int clientNum, int reqBlock) {
+		System.out.println("Client " + clientNum + " is requesting the data "
+				+ reqBlock);
+		logFile.writeToFile(clientNum, "Client " + clientNum
+				+ " is requesting the data " + reqBlock);
 		boolean found = false;
 
-		if(searchLocalCache(reqData) == true) { 
+		if (searchLocalCache(reqBlock) == true) {
 			this.LocalcacheHits++;
-			//			System.out.println("Server Memory: " + SimulatorServer.serverMemory);
-			//			logFile.writeToFile(clientNum,"Server Memory: " + SimulatorServer.serverMemory);
+			mytickCount.setTickCount(SimulatorConstants.SEARCH);
 			found = true;
 			return found;
 		}
 
 		else {
-			int whoHasData = SimulatorContentManager.searchNeighborCache(clientNum,reqData,logFile);
-			if(whoHasData != -1) {
-				logFile.writeToFile(clientNum,"Found in neighbor: "+ whoHasData);
-				int valueIwant = getDataFromNeighbor(whoHasData,clientNum,reqData);
-				if(valueIwant != -1) {
-					logFile.writeToFile(clientNum,"Got data from: "+ whoHasData);
+			mytickCount.setTickCount(SimulatorConstants.CONTEXTMANAGERCOMM);
+			int whoHasBlock = SimulatorContentManager.searchNeighborCache(
+					clientNum, reqBlock, logFile);
+			if (whoHasBlock != -1) {
+				logFile.writeToFile(clientNum, "Found in neighbor: "
+						+ whoHasBlock);
+				int isBlockThere = checkForFalseHits(reqBlock, clientNum, whoHasBlock);
+				if(isBlockThere != -1) {
+					getDataFromNeighbor(whoHasBlock, clientNum,reqBlock);
+					logFile.writeToFile(clientNum, "Got data from: "
+							+ whoHasBlock);
 					this.NeighborcacheHits++;
-					updateLocalCache(reqData);
+					updateLocalCache(reqBlock);
 					found = true;
 					return found;
 				}
-				else
-				{
-					cacheMiss++;
+				
+				else {
+					goToServer(clientNum,reqBlock);
+					found = true;
 				}
 			}
 
 			else {
-				System.out.println("Not found in content manager: ");
-				logFile.writeToFile(clientNum,"Not found in content manager: ");
-				//				System.out.println("Searching server memory");
-				//				logFile.writeToFile(clientNum,"Searching server memory");
-				int fromMemory = searchServerMemm(clientNum,reqData,logFile);
-				System.out.println("server" + fromMemory);
-				//				if(fromMemory == -1) System.exit(0);
-				ArrayList<Integer> localCacheUpdated = updateLocalCache(reqData);
-				SimulatorContentManager.updateContentManager(clientNum,reqData,localCacheUpdated,logFile);
-				System.out.println("After Update " + SimulatorContentManager.lookUpTable);
-				//				System.out.println("System Cache: " + SimulatorServer.serverMemory);
-				logFile.writeToFile(clientNum,"serverMemory: " + SimulatorServer.serverMemory);
+				
+				goToServer(clientNum,reqBlock);
 				found = true;
 				return found;
 			}
 		}
-		return found;	
+		return found;
 	}
 
-	private synchronized int getDataFromNeighbor(int whoHasData,int whoAskedForData, int reqData) {
+	/**
+	 * 
+	 * @param whoHasBlock
+	 *            : Client that has the data
+	 * @param whoAskedForBlock
+	 *            : Client that asked for data
+	 * @param reqBlock
+	 *            : Data I want
+	 * @return data if found else -1
+	 */
+	synchronized private int getDataFromNeighbor(int whoHasBlock,
+			int whoAskedForBlock, int reqBlock) {
+		mytickCount.setTickCount(SimulatorConstants.NEIGHBOR_COMM);
+		logFile.writeToFile(whoAskedForBlock, "Getting from client: "
+				+ whoHasBlock);
+			mytickCount.setTickCount(SimulatorConstants.SEARCH);
+			return reqBlock;
 
-		logFile.writeToFile(whoAskedForData, "Getting from client: " + whoHasData);
+	}
+	
+	synchronized public int checkForFalseHits(int reqBlock, int whoAskedForBlock, int whoHasBlock)
+		    {
 
-		if(SimulatorContentManager.allClients[whoHasData].clientCache.cache.contains(reqData))
-		{
-			System.out.println("Getting from client: " + whoHasData);
-			return reqData;
-		}
-		else {
-			//			checkForFalseHits(whoHasData,whoAskedForData,reqData);
-			return -1;
-		}
-
+					if(SimulatorContentManager.allClients[whoHasBlock].getClientCache().contains(reqBlock)) {
+						System.out.println("OK Verified");
+						logFile.writeToFile(whoAskedForBlock, "OK Verified ");
+						return reqBlock;
+					}
+					
+					else {
+						System.out.println("Bad hit");
+						logFile.writeToFile(whoAskedForBlock, "Bad hit");
+						cacheMiss++;
+						return -1;
+					}
+		    }
+	
+	private void goToServer(int clientNum,int reqBlock) {
+		mytickCount.setTickCount(SimulatorConstants.SERVER_COMM);
+		System.out.println("Not found in content manager: ");
+		logFile.writeToFile(clientNum, "Not found in content manager: ");
+		searchServerMemm(clientNum, reqBlock, logFile);
+		// if(fromMemory == -1) System.exit(0);
+		ArrayList<Integer> localCacheUpdated = updateLocalCache(reqBlock);
+		SimulatorContentManager.updateContentManager(clientNum,
+				reqBlock, localCacheUpdated, logFile);
+		System.out.println("After Update "
+				+ SimulatorContentManager.lookUpTable);
+		logFile.writeToFile(clientNum, "serverMemory: "
+				+ SimulatorServer.serverMemory);
 	}
 
 	/**
 	 * Search server
-	 * @param logFile 
+	 * 
+	 * @param logFile
 	 * */
-	private int searchServerMemm(int clientNum, int reqData, SimulatorLogger logFile) {
-		return SimulatorServer.searchMemory(clientNum,reqData,logFile);
+	private int searchServerMemm(int clientNum, int reqBlock,
+			SimulatorLogger logFile) {
+		return SimulatorServer.searchMemory(clientNum, reqBlock, logFile, mytickCount);
 	}
 
 	private ArrayList<Integer> updateLocalCache(int req_data) {
 		Random random = new Random();
-		int indexOfwhatToReplace = random.nextInt(clientBlockSize-1)+1;
-		if(clientCache.cache.size() < clientBlockSize) {
+		int indexOfwhatToReplace = random.nextInt(clientBlockSize - 1) + 1;
+		if (clientCache.cache.size() < clientBlockSize) {
 			clientCache.cache.add(req_data);
-		}
-		else {
+		} else {
 			// TODO: Random replacement algorithm
 			clientCache.cache.set(indexOfwhatToReplace, req_data);
 		}
-		return clientCache.cache;		
+		return clientCache.cache;
 	}
-
-
 
 	/**
 	 * Search data in client's local cache
 	 * */
 	private boolean searchLocalCache(int req_data) {
 		System.out.println("Searching local cache");
-		logFile.writeToFile(this.clientNumber,"Searching local cache");
-		for(int i=0;i<clientCache.cache.size();i++) {
-			if(clientCache.cache.get(i) == req_data) {
+		logFile.writeToFile(this.clientNumber, "Searching local cache");
+		for (int i = 0; i < clientCache.cache.size(); i++) {
+			if (clientCache.cache.get(i) == req_data) {
 				return true;
 			}
 		}

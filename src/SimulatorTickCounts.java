@@ -7,8 +7,6 @@
  *
  */
 public class SimulatorTickCounts {
-	
-	 static final int READ = 1;
 
 	int tickCount;
 	
@@ -20,7 +18,7 @@ public class SimulatorTickCounts {
 		return tickCount;
 	}
 	
-	public int setTickCount(int operationCost) {
-		return this.tickCount + operationCost;
+	public void setTickCount(int operationCost) {
+		this.tickCount+=operationCost;
 	}
 }

@@ -24,9 +24,10 @@ public class SimulatorServer {
 		}
 		
 	}
-	public static int searchMemory(int clientNum, int reqData, SimulatorLogger logFile) {
+	public static int searchMemory(int clientNum, int reqData, SimulatorLogger logFile, SimulatorTickCounts mytickCount) {
 		if(serverMemory.contains(reqData)) {
 			System.out.println("Data found on server");
+			mytickCount.setTickCount(SimulatorConstants.SEARCH);
 			logFile.writeToFile(clientNum, "Data found on server");
 			return reqData;
 		}
@@ -34,9 +35,10 @@ public class SimulatorServer {
 		else {
 			System.out.println("Not in server memory");
 			logFile.writeToFile(clientNum, "Not in server memory");
+			logFile.writeToFile(clientNum, "Getting value from disk");
 			System.out.println("Getting value from disk");
-			logFile.writeToFile(clientNum, "Not in server memory");
-			int newValue = getFromDisk(reqData);
+			mytickCount.setTickCount(SimulatorConstants.DISK_COMM);
+			int newValue = getFromDisk(reqData,mytickCount);
 			writeToServer(newValue);
 			return newValue;
 		}
@@ -49,7 +51,7 @@ public class SimulatorServer {
 		}
 	}
 
-	private static int getFromDisk(int reqData) {
+	private static int getFromDisk(int reqData, SimulatorTickCounts mytickCount) {
 		return SimulatorDisk.getDataFromMemory(reqData);	
 	}
 
