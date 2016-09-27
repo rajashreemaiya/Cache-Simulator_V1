@@ -40,6 +40,6 @@ public class SimulatorDisk {
 	 * Helper method to get requested data from main memory
 	 */
 	public static int getDataFromMemory(int reqData) {	
-		return memory[reqData];
+		return reqData;
 	}
 }

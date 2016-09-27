@@ -124,14 +124,14 @@ public class SimulatorClient extends Thread {
 
 		Random random = new Random();
 
-		for(int i=0; i<5;i++) {
+		for(int i=0; i<15;i++) {
 			int reqData = random.nextInt(9)+1;
 			boolean answer = this.request_data(this.clientNumber,reqData);
 			logFile.writeToFile(this.clientNumber,"Counter: " + i);
 			System.out.println(answer);
 			this.printClientCache();
 			System.out.println();
-//			logFile.writeToFile(this.clientNumber,"After Update " + SimulatorContentManager.lookUpTable);
+			//			logFile.writeToFile(this.clientNumber,"After Update " + SimulatorContentManager.lookUpTable);
 			logFile.writeToFile(this.clientNumber,"\n");
 			System.out.println();
 		}	
@@ -152,8 +152,8 @@ public class SimulatorClient extends Thread {
 
 		if(searchLocalCache(reqData) == true) { 
 			this.LocalcacheHits++;
-//			System.out.println("Server Memory: " + SimulatorServer.serverMemory);
-//			logFile.writeToFile(clientNum,"Server Memory: " + SimulatorServer.serverMemory);
+			//			System.out.println("Server Memory: " + SimulatorServer.serverMemory);
+			//			logFile.writeToFile(clientNum,"Server Memory: " + SimulatorServer.serverMemory);
 			found = true;
 			return found;
 		}
@@ -161,29 +161,33 @@ public class SimulatorClient extends Thread {
 		else {
 			int whoHasData = SimulatorContentManager.searchNeighborCache(clientNum,reqData,logFile);
 			if(whoHasData != -1) {
+				logFile.writeToFile(clientNum,"Found in neighbor: "+ whoHasData);
 				int valueIwant = getDataFromNeighbor(whoHasData,clientNum,reqData);
-				if(valueIwant == -1) {
-					cacheMiss++;
-				}
-				else {
+				if(valueIwant != -1) {
+					logFile.writeToFile(clientNum,"Got data from: "+ whoHasData);
 					this.NeighborcacheHits++;
 					updateLocalCache(reqData);
 					found = true;
 					return found;
+				}
+				else
+				{
+					cacheMiss++;
 				}
 			}
 
 			else {
 				System.out.println("Not found in content manager: ");
 				logFile.writeToFile(clientNum,"Not found in content manager: ");
-//				System.out.println("Searching server memory");
-//				logFile.writeToFile(clientNum,"Searching server memory");
-				searchServerMemm(clientNum,reqData,logFile);
-//				if(serverOrDisk != 0 || serverOrDisk != 1) System.exit(0);
+				//				System.out.println("Searching server memory");
+				//				logFile.writeToFile(clientNum,"Searching server memory");
+				int fromMemory = searchServerMemm(clientNum,reqData,logFile);
+				System.out.println("server" + fromMemory);
+				//				if(fromMemory == -1) System.exit(0);
 				ArrayList<Integer> localCacheUpdated = updateLocalCache(reqData);
 				SimulatorContentManager.updateContentManager(clientNum,reqData,localCacheUpdated,logFile);
 				System.out.println("After Update " + SimulatorContentManager.lookUpTable);
-//				System.out.println("System Cache: " + SimulatorServer.serverMemory);
+				//				System.out.println("System Cache: " + SimulatorServer.serverMemory);
 				logFile.writeToFile(clientNum,"serverMemory: " + SimulatorServer.serverMemory);
 				found = true;
 				return found;
@@ -192,8 +196,20 @@ public class SimulatorClient extends Thread {
 		return found;	
 	}
 
-	private int getDataFromNeighbor(int whoHasData,int whoAskedForData, int reqData) {
-		return -1;
+	private synchronized int getDataFromNeighbor(int whoHasData,int whoAskedForData, int reqData) {
+
+		logFile.writeToFile(whoAskedForData, "Getting from client: " + whoHasData);
+
+		if(SimulatorContentManager.allClients[whoHasData].clientCache.cache.contains(reqData))
+		{
+			System.out.println("Getting from client: " + whoHasData);
+			return reqData;
+		}
+		else {
+			//			checkForFalseHits(whoHasData,whoAskedForData,reqData);
+			return -1;
+		}
+
 	}
 
 	/**

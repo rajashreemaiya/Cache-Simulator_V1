@@ -17,6 +17,7 @@ public class SimulatorContentManager {
 
 	/* Make the map synchronized object, ensures thread safety */
 	static Map<Integer, ArrayList> lookUpTable = Collections.synchronizedMap(new HashMap<Integer, ArrayList>());
+	static SimulatorClient[] allClients;
 	
 	/**
 	 * 
@@ -36,7 +37,7 @@ public class SimulatorContentManager {
 			if(values1.contains(req_data) && clientNum != entry.getKey()) {
 				System.out.println("Finding in neighbor cache...");	
 				System.out.println("Found in neighbor: "+ entry.getKey());
-				logFile.writeToFile(clientNum,"Found in neighbor: "+ entry.getKey());
+//				logFile.writeToFile(clientNum,"Found in neighbor: "+ entry.getKey());
 				return entry.getKey();
 			}
 		}
