@@ -72,6 +72,11 @@ public class SimulatorClient extends Thread {
 		 * TODO: Algorithms are started here This will have some log messages
 		 * and beginning of algorithm execution.
 		 */
+		
+//		this.SimFifo();
+//		this.SimNChance();
+//		this.SimLRU();
+		
 		this.logFile = new SimulatorLogger(this.clientNumber);
 		logFile.writeToFile(this.clientNumber, "System cache size: "
 				+ SimulatorServer.serverCacheSize);
@@ -88,9 +93,9 @@ public class SimulatorClient extends Thread {
 				+ this.NeighborcacheHits);
 		logFile.writeToFile(this.clientNumber, "Cache Miss: " + this.cacheMiss);
 
+		logFile.writeToFile(this.clientNumber, "Tick counts table: ");
 		for(int k=0;k<clientTickCounts.length;k++)
-			logFile.writeToFile(this.clientNumber, "Tick counts table: "
-				+ clientTickCounts[k]);
+			logFile.writeToFile(this.clientNumber, "For request "+ k + ": " + clientTickCounts[k]);
 	}
 
 	private void generateRequestData() {
