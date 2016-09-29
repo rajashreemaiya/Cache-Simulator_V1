@@ -93,9 +93,9 @@ public class SimulatorClient extends Thread {
 				+ this.NeighborcacheHits);
 		logFile.writeToFile(this.clientNumber, "Cache Miss: " + this.cacheMiss);
 
-		logFile.writeToFile(this.clientNumber, "Tick counts table: ");
-		for(int k=0;k<clientTickCounts.length;k++)
-			logFile.writeToFile(this.clientNumber, "For request "+ k + ": " + clientTickCounts[k]);
+		logFile.writeToFile(this.clientNumber, "Tick counts: ");
+//		for(int k=0;k<clientTickCounts.length;k++)
+		logFile.writeToFile(this.clientNumber, ""+mytickCount.getTickCount());
 	}
 
 	private void generateRequestData() {
@@ -134,7 +134,7 @@ public class SimulatorClient extends Thread {
 		Random random = new Random();
 		
 		for (int i = 0; i < 15; i++) {
-			mytickCount.tickCount = 0;
+//			mytickCount.tickCount = 0;
 			int reqBlock = random.nextInt(9) + 1;
 			logFile.writeToFile(this.clientNumber,"lookup table: "
 					+ SimulatorContentManager.lookUpTable);
@@ -194,20 +194,71 @@ public class SimulatorClient extends Thread {
 				}
 				
 				else {
-					goToServer(clientNum,reqBlock);
+					goToServer(clientNum, reqBlock);
 					found = true;
 				}
 			}
 
 			else {
 				
-				goToServer(clientNum,reqBlock);
+				int checkFalseMiss = checkForFalseMiss(reqBlock, clientNum);
+				if(checkFalseMiss == -1) {
+					goToServer(clientNum,reqBlock);
+				}
+				else {
+					this.NeighborcacheHits++;
+					updateLocalCache(reqBlock);
+				}
 				found = true;
 				return found;
 			}
 		}
 		return found;
 	}
+
+	/**
+	 * 
+	 * @param reqBlock: Data I want
+	 * @param whoAskedForBlock: Client that asked for data
+	 * @param whoHasBlock: Client that has the data
+	 * @return block if it exists (false miss) or -1 (CM is right)
+	 */
+	synchronized private int checkForFalseMiss(int reqBlock, int whoAskedForBlock) {
+		for(int i=0;i<SimulatorContentManager.allClients.length;i++) {
+			if(SimulatorContentManager.allClients[i].getClientCache().contains(reqBlock)) {
+				System.out.println("It exists here! ");
+				logFile.writeToFile(whoAskedForBlock, "It exists here!");
+				return reqBlock;
+			}	
+		}
+		System.out.println("Ok, its not there!");
+		logFile.writeToFile(whoAskedForBlock, "Ok, its not there!");
+		return -1;		
+	}
+	
+	/**
+	 * 
+	 * @param reqBlock: Data I want
+	 * @param whoAskedForBlock: Client that asked for data
+	 * @param whoHasBlock: Client that has the data
+	 * @return block if it exists (CM is right) or -1 (false hit)
+	 */
+	synchronized public int checkForFalseHits(int reqBlock, int whoAskedForBlock, int whoHasBlock)
+    {
+
+			if(SimulatorContentManager.allClients[whoHasBlock].getClientCache().contains(reqBlock)) {
+				System.out.println("OK Verified");
+				logFile.writeToFile(whoAskedForBlock, "OK Verified ");
+				return reqBlock;
+			}
+			
+			else {
+				System.out.println("Bad hit");
+				logFile.writeToFile(whoAskedForBlock, "Bad hit");
+				cacheMiss++;
+				return -1;
+			}
+    }
 
 	/**
 	 * 
@@ -228,23 +279,6 @@ public class SimulatorClient extends Thread {
 			return reqBlock;
 
 	}
-	
-	synchronized public int checkForFalseHits(int reqBlock, int whoAskedForBlock, int whoHasBlock)
-		    {
-
-					if(SimulatorContentManager.allClients[whoHasBlock].getClientCache().contains(reqBlock)) {
-						System.out.println("OK Verified");
-						logFile.writeToFile(whoAskedForBlock, "OK Verified ");
-						return reqBlock;
-					}
-					
-					else {
-						System.out.println("Bad hit");
-						logFile.writeToFile(whoAskedForBlock, "Bad hit");
-						cacheMiss++;
-						return -1;
-					}
-		    }
 	
 	private void goToServer(int clientNum,int reqBlock) {
 		mytickCount.setTickCount(SimulatorConstants.SERVER_COMM);

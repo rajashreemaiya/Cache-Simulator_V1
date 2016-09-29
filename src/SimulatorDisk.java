@@ -21,7 +21,7 @@ public class SimulatorDisk {
 	 * Fill the main memory.
 	 * TODO: This is dummy data, what will be here when we start?
 	 */
-	public static void setMemory() {	
+	public static void setMemory() {
 		for(int i=0;i<110;i++) {
 			memory[i] = i;
 		}
