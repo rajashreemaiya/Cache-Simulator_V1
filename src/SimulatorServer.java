@@ -12,7 +12,7 @@ import java.util.Random;
  *
  */
 public class SimulatorServer {
-	static final int serverCacheSize = 7; //TODO: Will this be a fixed number?
+	static int serverCacheSize; //TODO: Will this be a fixed number?
 	/* Make list synchronized object, ensures thread safety */
 	static List<Integer> serverMemory = Collections.synchronizedList(new ArrayList<Integer>(serverCacheSize));
 	
@@ -37,7 +37,8 @@ public class SimulatorServer {
 			logFile.writeToFile(clientNum, "Not in server memory");
 			logFile.writeToFile(clientNum, "Getting value from disk");
 			System.out.println("Getting value from disk");
-			mytickCount.setTickCount(SimulatorConstants.DISK_COMM);
+			mytickCount.setTickCount(SimulatorConstants.TODISK);
+			mytickCount.setTickCount(SimulatorConstants.FROMDISK);
 			int newValue = getFromDisk(reqData,mytickCount);
 			writeToServer(newValue);
 			return newValue;

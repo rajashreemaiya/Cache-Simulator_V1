@@ -26,7 +26,7 @@ public class SimulatorContentManager {
 	 * @param logFile for writing to the log file
 	 * @return which client has the data if found in neighbor's cache else -1
 	 */
-	public static int searchNeighborCache(int clientNum, int req_data, SimulatorLogger logFile) {
+	public synchronized static int searchNeighborCache(int clientNum, int req_data, SimulatorLogger logFile) {
 
 		/* TODO: This will be a loop for n clients - look in all clients caches for value, 
 		 * so you do not have to go to system cache*/
