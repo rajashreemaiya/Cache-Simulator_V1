@@ -42,8 +42,6 @@ public class SimulatorContentManager {
 		for (Map.Entry<Integer, ArrayList> entry : lookUpTable.entrySet()) {
 			ArrayList<Integer> values1 = entry.getValue();
 			if (values1.contains(req_data) && clientNum != entry.getKey()) {
-				System.out.println("Finding in neighbor cache...");
-				System.out.println("Found in neighbor: " + entry.getKey());
 				return entry.getKey();
 			}
 		}

@@ -15,14 +15,14 @@ import java.util.*;
  */
 public class SimulatorDisk {
 
-	static int[] memory = new int[110];
+	static int[] memory = new int[2048];
 
 	/**
 	 * Fill the main memory. TODO: This is dummy data, what will be here when we
 	 * start?
 	 */
 	public static void setMemory() {
-		for (int i = 0; i < 110; i++) {
+		for (int i = 0; i < memory.length; i++) {
 			memory[i] = i;
 		}
 	}

@@ -20,7 +20,7 @@ public class SimulatorServer {
 	public static void setServerMemory() {
 		Random r = new Random();
 		for (int i = 0; i < serverCacheSize; i++) {
-			int value = r.nextInt(10) + 1;
+			int value = r.nextInt(300) + 187;
 			serverMemory.add(value);
 		}
 
@@ -29,17 +29,14 @@ public class SimulatorServer {
 	public static int searchMemory(int clientNum, int reqData,
 			SimulatorLogger logFile, SimulatorTickCounts mytickCount) {
 		if (serverMemory.contains(reqData)) {
-			System.out.println("Data found on server");
 			mytickCount.setTickCount(SimulatorConstants.SEARCH);
 			logFile.writeToFile(clientNum, "Data found on server");
 			return reqData;
 		}
 
 		else {
-			System.out.println("Not in server memory");
 			logFile.writeToFile(clientNum, "Not in server memory");
 			logFile.writeToFile(clientNum, "Getting value from disk");
-			System.out.println("Getting value from disk");
 			mytickCount.setTickCount(SimulatorConstants.TODISK);
 			mytickCount.setTickCount(SimulatorConstants.FROMDISK);
 			int newValue = getFromDisk(reqData, mytickCount);

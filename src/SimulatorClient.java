@@ -1,6 +1,4 @@
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Random;
+import java.util.*;
 
 /**
  * This class initializes each client and it's operations
@@ -32,9 +30,18 @@ public class SimulatorClient extends Thread {
 		this.clientNumber = clientNumber;
 		this.mytickCount = new SimulatorTickCounts();
 		this.setBlockSize(blockSize);
-		// this.fillClientCache();
+		this.fillInitialCache();
 		SimulatorContentManager.lookUpTable
 				.put(clientNumber, clientCache.cache);
+	}
+
+	private void fillInitialCache() {
+		Random r = new Random();
+		for(int i=0;i<clientBlockSize;i++) {
+			int value = r.nextInt(100)+1;
+			clientCache.cache.add(value);
+		}
+		
 	}
 
 	public int setBlockSize(int blockSize) {
@@ -75,6 +82,10 @@ public class SimulatorClient extends Thread {
 			this.SimCacheRandomReplacement();
 		}
 
+		if (SimulatorConstants.ALGORITHM.equals("NChance")) {
+			this.simNChance();
+		}
+
 		clientExecCounter++;
 	}
 
@@ -91,46 +102,27 @@ public class SimulatorClient extends Thread {
 		logFile.writeToFile(this.clientNumber, "Cache is:.." + client_data);
 
 		SimulatorContentManager.lookUpTable.put(this.clientNumber, client_data);
-		int i = 1;
+		int i = 0;
+		
+		for(i=0;i<clientBlockSize;i++) {
+			indexArray.add(0);
+		}
 
 		for (int j = 0; j < 100; j++) {
-			int reqBlock = random.nextInt(90) + 1;
-			System.out.println();
+			int reqBlock = random.nextInt(200) + 1;
 			logFile.writeToFile(this.clientNumber, "\n");
 			logFile.writeToFile(this.clientNumber, "Cache is:.."
 					+ clientCache.cache);
-			System.out.println("Client " + this.clientNumber
-					+ " is requesting the data " + reqBlock);
+			logFile.writeToFile(this.clientNumber, "Cache size:.."
+					+ clientCache.cache.size());
+
 			logFile.writeToFile(this.clientNumber, "Client "
 					+ this.clientNumber + " is requesting the data " + reqBlock);
-
-			System.out.println("Client size " + this.clientCache.cache.size());
-
-			if (clientCache.cache.size() < this.clientBlockSize) {
-				System.out.println("Filling initial cache...");
-				logFile.writeToFile(this.clientNumber,
-						"Filling initial cache...");
-				if (clientCache.cache.contains(reqBlock)) {
-					int elmentIndex = clientCache.cache.indexOf(reqBlock);
-					accessCounter = accessCounter + 1;
-					indexArray.set(elmentIndex, accessCounter);
-					i++;
-					logFile.writeToFile(this.clientNumber, "Index array: "
-							+ indexArray);
-				} else {
-					clientCache.cache.add(reqBlock);
-					indexArray.add(i);
-					accessCounter = i;
-					logFile.writeToFile(this.clientNumber, "Index array: "
-							+ indexArray);
-					i++;
-				}
-			}
-
-			else {
+			
 				logFile.writeToFile(this.clientNumber, "Access counter is "
 						+ accessCounter);
-				System.out.println("Access counter is " + accessCounter);
+				logFile.writeToFile(this.clientNumber, "-----" + indexArray);
+//				System.out.println("Access counter is " + accessCounter);
 				boolean found = false;
 
 				if (searchLocalCache(reqBlock) == true) {
@@ -139,6 +131,7 @@ public class SimulatorClient extends Thread {
 					mytickCount.setTickCount(SimulatorConstants.SEARCH);
 					accessCounter = accessCounter + 1;
 					indexArray.set(elmentIndex, accessCounter);
+					
 					logFile.writeToFile(this.clientNumber, "Index array: "
 							+ indexArray);
 					found = true;
@@ -163,7 +156,6 @@ public class SimulatorClient extends Thread {
 									reqBlock, indexArray, accessCounter);
 							accessCounter = (int) localCacheUpdated[1];
 							indexArray = (ArrayList<Integer>) localCacheUpdated[0];
-							System.out.println("LRU..... " + clientCache.cache);
 							found = true;
 						}
 
@@ -177,8 +169,6 @@ public class SimulatorClient extends Thread {
 									this.clientNumber, reqBlock,
 									(ArrayList<Integer>) localCacheUpdated[2],
 									logFile);
-							System.out.println("After Update "
-									+ SimulatorContentManager.lookUpTable);
 							found = true;
 						}
 					}
@@ -208,7 +198,7 @@ public class SimulatorClient extends Thread {
 					}
 				}
 			}
-		}
+//		}
 		logFile.writeToFile(this.clientNumber, "ticks for " + this.clientNumber
 				+ " is  " + mytickCount.getTickCount());
 		logFile.writeToFile(this.clientNumber, "\n");
@@ -218,17 +208,27 @@ public class SimulatorClient extends Thread {
 			ArrayList<Integer> indexArray, int accessCounter) {
 
 		Object[] returnValues = new Object[3];
-		System.out.println("Cache is: " + clientCache.cache);
 		logFile.writeToFile(this.clientNumber, "Cache is:.."
 				+ clientCache.cache);
 
-		System.out.println("Replacing....");
 		logFile.writeToFile(this.clientNumber, "Replacing..");
 
 		int minIndex = -1;
 		for (int i = 0; i < indexArray.size(); i++) {
 			minIndex = indexArray.indexOf(Collections.min(indexArray));
 		}
+		
+//		if (indexArray.size() < this.clientCache.cache.size()) {
+//			clientCache.cache.set(minIndex, reqBlock);
+//			accessCounter = accessCounter + 1;
+//			indexArray.add(accessCounter);
+//		}
+//		else
+//		{
+//			clientCache.cache.set(minIndex, reqBlock);
+//			accessCounter = accessCounter + 1;
+//			indexArray.set(minIndex, accessCounter);
+//		}
 		clientCache.cache.set(minIndex, reqBlock);
 		accessCounter = accessCounter + 1;
 		indexArray.set(minIndex, accessCounter);
@@ -239,7 +239,6 @@ public class SimulatorClient extends Thread {
 
 		logFile.writeToFile(this.clientNumber, "Index array: " + indexArray);
 
-		System.out.println("Replaced Cache is: " + clientCache.cache);
 		logFile.writeToFile(this.clientNumber, "Replaced Cache is: "
 				+ clientCache.cache);
 
@@ -266,18 +265,12 @@ public class SimulatorClient extends Thread {
 		boolean found = false;
 		for (int j = 0; j < 25; j++) {
 			int reqBlock = random.nextInt(50) + 1;
-			System.out.println();
 			logFile.writeToFile(this.clientNumber, "\n");
-			System.out.println("Client " + this.clientNumber
-					+ " is requesting the data " + reqBlock);
 			logFile.writeToFile(this.clientNumber, "Client "
 					+ this.clientNumber + " is requesting the data " + reqBlock);
 
-			System.out.println("Client size " + this.clientCache.cache.size());
-			if (clientCache.cache.size() < this.clientBlockSize) {
-				System.out.println("Filling initial cache...");
-				logFile.writeToFile(this.clientNumber,
-						"Filling initial cache...");
+			if (clientCache.cache.size() < this.clientBlockSize
+					&& (!clientCache.cache.contains(reqBlock))) {
 				clientCache.cache.add(reqBlock);
 			}
 
@@ -317,8 +310,6 @@ public class SimulatorClient extends Thread {
 							SimulatorContentManager.updateContentManager(
 									clientNum, reqBlock, localCacheUpdated,
 									logFile);
-							System.out.println("After Update "
-									+ SimulatorContentManager.lookUpTable);
 							found = true;
 						}
 					}
@@ -344,7 +335,6 @@ public class SimulatorClient extends Thread {
 		}
 	}
 
-	
 	private ArrayList<Integer> updateLocalCache(int req_data) {
 		Random random = new Random();
 		int indexOfwhatToReplace = random.nextInt(clientBlockSize - 1) + 1;
@@ -360,7 +350,6 @@ public class SimulatorClient extends Thread {
 	 * Search data in client's local cache
 	 * */
 	private boolean searchLocalCache(int req_data) {
-		System.out.println("Searching local cache");
 		logFile.writeToFile(this.clientNumber, "Searching local cache");
 		for (int i = 0; i < clientCache.cache.size(); i++) {
 			if (clientCache.cache.get(i) == req_data) {
@@ -386,19 +375,17 @@ public class SimulatorClient extends Thread {
 
 		SimulatorContentManager.lookUpTable.put(this.clientNumber, client_data);
 
-		for (int j = 0; j < 25; j++) {
-			int reqBlock = random.nextInt(50) + 1;
-			System.out.println();
+		for (int j = 0; j < 500; j++) {
+			int reqBlock = random.nextInt(100) + 1;
 			logFile.writeToFile(this.clientNumber, "\n");
-			System.out.println("Client " + this.clientNumber
-					+ " is requesting the data " + reqBlock);
+
 			logFile.writeToFile(this.clientNumber, "Client "
 					+ this.clientNumber + " is requesting the data " + reqBlock);
 
-			System.out.println("Client size " + this.clientCache.cache.size());
 
-			if (clientCache.cache.size() < this.clientBlockSize) {
-				System.out.println("Filling initial cache...");
+			if (clientCache.cache.size() < this.clientBlockSize
+					&& !(clientCache.cache.contains(reqBlock))) {
+				LocalcacheHits++;
 				logFile.writeToFile(this.clientNumber,
 						"Filling initial cache...");
 				clientCache.cache.add(reqBlock);
@@ -428,8 +415,6 @@ public class SimulatorClient extends Thread {
 									reqBlock);
 							this.NeighborcacheHits++;
 							updateLocalCacheFIFO(reqBlock);
-							System.out
-									.println("FIFO..... " + clientCache.cache);
 							found = true;
 						}
 
@@ -439,8 +424,6 @@ public class SimulatorClient extends Thread {
 							SimulatorContentManager.updateContentManager(
 									this.clientNumber, reqBlock,
 									localCacheUpdated, logFile);
-							System.out.println("After Update "
-									+ SimulatorContentManager.lookUpTable);
 							found = true;
 						}
 					}
@@ -471,38 +454,33 @@ public class SimulatorClient extends Thread {
 
 	private ArrayList<Integer> updateLocalCacheFIFO(int reqBlock) {
 		if (clientCache.cache.size() < clientBlockSize) {
-			System.out.println("Adding...");
 			clientCache.cache.add(reqBlock);
-		} else {
-			System.out.println("Cache is: " + clientCache.cache);
+		}
+
+		else {
 			logFile.writeToFile(this.clientNumber, "Cache is:.."
 					+ clientCache.cache);
 
-			System.out.println("Replacing....");
 			logFile.writeToFile(this.clientNumber, "Replacing..");
 
-			System.out.println("Removing..." + clientCache.cache.get(0));
 			logFile.writeToFile(this.clientNumber, "Removing..."
 					+ clientCache.cache.get(0));
 
 			clientCache.cache.remove(0);
-			System.out.println("Now the size is: " + clientCache.cache.size());
 			logFile.writeToFile(this.clientNumber, "Now the size is: "
 					+ clientCache.cache.size());
 
-			System.out.println("Cache is: " + clientCache.cache);
 			logFile.writeToFile(this.clientNumber, "Cache is: "
 					+ clientCache.cache);
 
 			clientCache.cache.add(reqBlock);
-			System.out.println("Replaced Cache is: " + clientCache.cache);
 			logFile.writeToFile(this.clientNumber, "Replaced Cache is: "
 					+ clientCache.cache);
 
 		}
 		return clientCache.cache;
 	}
-	
+
 	/**
 	 * 
 	 * @param reqBlock
@@ -518,12 +496,10 @@ public class SimulatorClient extends Thread {
 		for (int i = 0; i < SimulatorContentManager.allClients.length; i++) {
 			if (SimulatorContentManager.allClients[i].getClientCache()
 					.contains(reqBlock)) {
-				System.out.println("It exists here! ");
 				logFile.writeToFile(whoAskedForBlock, "It exists here!");
 				return reqBlock;
 			}
 		}
-		System.out.println("Ok, its not there!");
 		logFile.writeToFile(whoAskedForBlock, "Ok, its not there!");
 		return -1;
 	}
@@ -543,13 +519,11 @@ public class SimulatorClient extends Thread {
 
 		if (SimulatorContentManager.allClients[whoHasBlock].getClientCache()
 				.contains(reqBlock)) {
-			System.out.println("OK Verified");
 			logFile.writeToFile(whoAskedForBlock, "OK Verified ");
 			return reqBlock;
 		}
 
 		else {
-			System.out.println("Bad hit");
 			logFile.writeToFile(whoAskedForBlock, "Bad hit");
 			cacheMiss++;
 			return -1;
@@ -578,9 +552,9 @@ public class SimulatorClient extends Thread {
 	}
 
 	private void goToServer(int clientNum, int reqBlock) {
+		cacheMiss++;
 		mytickCount.setTickCount(SimulatorConstants.TOSERVER);
 		mytickCount.setTickCount(SimulatorConstants.FROMSERVER);
-		System.out.println("Not found in content manager: ");
 		logFile.writeToFile(clientNum, "Not found in content manager: ");
 		searchServerMemm(clientNum, reqBlock, logFile);
 		logFile.writeToFile(clientNum, "serverMemory: "
@@ -598,84 +572,228 @@ public class SimulatorClient extends Thread {
 				mytickCount);
 	}
 
+	// TODO: // ------------- N chance
+	//
+	private void simNChance() {
+		/**
+		 * TODO: This is for the input from trace file
+		 * */
 
-	// ------------- N chance
+		int c = 0;
+		int n = 3;
+		HashMap<Integer, Integer> recirculationArray = new HashMap<Integer, Integer>();
+		Random random = new Random();
 
-	// private void simNChance() {
-	/**
-	 * TODO: This is for the input from trace file
-	 * */
-	/*
-	 * int c=1; Random random = new Random();
-	 * 
-	 * 
-	 * ArrayList<Integer> client_data = this.getClientCache();
-	 * logFile.writeToFile(this.clientNumber, "Cache is:.."+client_data);
-	 * 
-	 * SimulatorContentManager.lookUpTable.put(this.clientNumber, client_data);
-	 * 
-	 * 
-	 * for (int j = 0; j < 25; j++) { c++; int reqBlock = random.nextInt(50) +
-	 * 1; System.out.println(); logFile.writeToFile(this.clientNumber, "\n");
-	 * logFile.writeToFile(this.clientNumber, "Iteration: " +c);
-	 * System.out.println("Client " + this.clientNumber +
-	 * " is requesting the data " + reqBlock);
-	 * logFile.writeToFile(this.clientNumber, "Client " + this.clientNumber +
-	 * " is requesting the data " + reqBlock);
-	 * 
-	 * System.out.println("Client size " + this.clientCache.cache.size()); if
-	 * (clientCache.cache.size() < this.clientBlockSize) {
-	 * System.out.println("Filling initial cache...");
-	 * logFile.writeToFile(this.clientNumber, "Filling initial cache...");
-	 * clientCache.cache.add(reqBlock); }
-	 * 
-	 * else { boolean found = false; if (searchLocalCache(reqBlock) == true) {
-	 * this.LocalcacheHits++;
-	 * mytickCount.setTickCount(SimulatorConstants.SEARCH); found = true; }
-	 * 
-	 * else { mytickCount.setTickCount(SimulatorConstants.CONTEXTMANAGERCOMM);
-	 * int whoHasBlock = SimulatorContentManager.searchNeighborCache(
-	 * this.clientNumber, reqBlock, logFile); if (whoHasBlock != -1) { int
-	 * isBlockThere = checkForFalseHits(reqBlock, this.clientNumber,
-	 * whoHasBlock); if(isBlockThere != -1) { getDataFromNeighbor(whoHasBlock,
-	 * this.clientNumber,reqBlock); this.NeighborcacheHits++;
-	 * updateLocalCacheNChance(reqBlock); System.out.println("N Chance..... " +
-	 * clientCache.cache); logFile.writeToFile(this.clientNumber,
-	 * "N Chance..... " + clientCache.cache);
-	 * 
-	 * found = true; }
-	 * 
-	 * else { goToServer(this.clientNumber, reqBlock); ArrayList<Integer>
-	 * localCacheUpdated = updateLocalCacheNChance(reqBlock);
-	 * SimulatorContentManager.updateContentManager(this.clientNumber, reqBlock,
-	 * localCacheUpdated, logFile); System.out.println("After Update " +
-	 * SimulatorContentManager.lookUpTable); found = true; } }
-	 * 
-	 * else {
-	 * 
-	 * int checkFalseMiss = checkForFalseMiss(reqBlock, this.clientNumber);
-	 * if(checkFalseMiss == -1) { goToServer(this.clientNumber,reqBlock);
-	 * ArrayList<Integer> localCacheUpdated = updateLocalCacheNChance(reqBlock);
-	 * SimulatorContentManager.updateContentManager(this.clientNumber, reqBlock,
-	 * localCacheUpdated, logFile); } else { this.NeighborcacheHits++;
-	 * updateLocalCacheNChance(reqBlock); } found = true; } } } }
-	 * logFile.writeToFile(this.clientNumber, "ticks for " + this.clientNumber +
-	 * " is  " + mytickCount.getTickCount());
-	 * logFile.writeToFile(this.clientNumber, "\n"); }
-	 * 
-	 * private ArrayList<Integer> updateLocalCacheNChance(int reqBlock) { if
-	 * (clientCache.cache.size() < clientBlockSize) {
-	 * System.out.println("Adding..."); clientCache.cache.add(reqBlock); } else
-	 * { logFile.writeToFile(this.clientNumber, "Replacing for N Chance");
-	 * for(int i=0;i<SimulatorContentManager.allClients.length;i++) { for(int
-	 * j=0;j<clientCache.cache.size();j++) { if(this.clientNumber !=
-	 * SimulatorContentManager.allClients[i].clientNumber &&
-	 * SimulatorContentManager
-	 * .allClients[i].getClientCache().contains(clientCache.cache.get(j))) {
-	 * logFile.writeToFile(this.clientNumber, "Client " +
-	 * SimulatorContentManager.allClients[i].clientNumber +" has the block.");
-	 * logFile.writeToFile(this.clientNumber, "Replacing the block at: " + j +
-	 * " with " + reqBlock); clientCache.cache.set(j,reqBlock); return
-	 * clientCache.cache; } } } } return clientCache.cache; }
-	 */
+		ArrayList<Integer> client_data = this.getClientCache();
+		logFile.writeToFile(this.clientNumber, "Cache is:.." + client_data);
+
+		SimulatorContentManager.lookUpTable.put(this.clientNumber, client_data);
+
+		for (int j = 0; j < 25; j++) {
+			c++;
+			int reqBlock = random.nextInt(9) + 1;
+			System.out.println();
+			logFile.writeToFile(this.clientNumber, "\n");
+			logFile.writeToFile(this.clientNumber, "Iteration: " + c);
+			System.out.println("Client " + this.clientNumber
+					+ " is requesting the data " + reqBlock);
+			logFile.writeToFile(this.clientNumber, "Client "
+					+ this.clientNumber + " is requesting the data " + reqBlock);
+
+			System.out.println("Client size " + this.clientCache.cache.size());
+			recirculationArray.put(reqBlock, 3);
+			if (clientCache.cache.size() < this.clientBlockSize
+					&& (!clientCache.cache.contains(reqBlock))) {
+				System.out.println("Filling initial cache...");
+				logFile.writeToFile(this.clientNumber,
+						"Filling initial cache...");
+				clientCache.cache.add(reqBlock);
+				System.out.println(clientCache.getCache());
+				logFile.writeToFile(this.clientNumber,
+						"" + clientCache.getCache());
+			}
+
+			else {
+				boolean found = false;
+				if (searchLocalCache(reqBlock) == true) {
+					this.LocalcacheHits++;
+					mytickCount.setTickCount(SimulatorConstants.SEARCH);
+					found = true;
+				}
+
+				else {
+					mytickCount
+							.setTickCount(SimulatorConstants.TOCONTEXTMANAGER);
+					mytickCount
+							.setTickCount(SimulatorConstants.FROMCONTEXTMANAGER);
+					int whoHasBlock = SimulatorContentManager
+							.searchNeighborCache(this.clientNumber, reqBlock,
+									logFile);
+					if (whoHasBlock != -1) {
+						int isBlockThere = checkForFalseHits(reqBlock,
+								this.clientNumber, whoHasBlock);
+						if (isBlockThere != -1) {
+							getDataFromNeighbor(whoHasBlock, this.clientNumber,
+									reqBlock);
+							this.NeighborcacheHits++;
+							updateLocalCacheNChance(reqBlock,
+									recirculationArray, n);
+							System.out.println("N Chance..... "
+									+ clientCache.cache);
+							logFile.writeToFile(this.clientNumber,
+									"N Chance..... " + clientCache.cache);
+
+							found = true;
+						}
+
+						else {
+							goToServer(this.clientNumber, reqBlock);
+							Object[] localCacheUpdated = updateLocalCacheNChance(
+									reqBlock, recirculationArray, n);
+							SimulatorContentManager.updateContentManager(
+									this.clientNumber, reqBlock,
+									(ArrayList<Integer>) localCacheUpdated[1],
+									logFile);
+							System.out.println("After Update "
+									+ SimulatorContentManager.lookUpTable);
+							found = true;
+						}
+					}
+
+					else {
+
+						int checkFalseMiss = checkForFalseMiss(reqBlock,
+								this.clientNumber);
+						if (checkFalseMiss == -1) {
+							goToServer(this.clientNumber, reqBlock);
+							Object[] localCacheUpdated = updateLocalCacheNChance(
+									reqBlock, recirculationArray, n);
+							SimulatorContentManager.updateContentManager(
+									this.clientNumber, reqBlock,
+									(ArrayList<Integer>) localCacheUpdated[1],
+									logFile);
+						} else {
+							this.NeighborcacheHits++;
+							updateLocalCacheNChance(reqBlock,
+									recirculationArray, n);
+						}
+						found = true;
+					}
+				}
+			}
+		}
+		logFile.writeToFile(this.clientNumber, "ticks for " + this.clientNumber
+				+ " is  " + mytickCount.getTickCount());
+		logFile.writeToFile(this.clientNumber, "\n");
+	}
+
+	synchronized private Object[] updateLocalCacheNChance(int reqBlock,
+			HashMap<Integer, Integer> recircArray, int n) {
+
+		logFile.writeToFile(this.clientNumber, "" + SimulatorContentManager.lookUpTable);
+		boolean isUnique = false;
+		Object[] returnValues = new Object[3];
+		recircArray.put(reqBlock, n);
+		logFile.writeToFile(this.clientNumber, "Replacing for N Chance");
+		logFile.writeToFile(this.clientNumber, "arr " + recircArray);
+		for (int i = 0; i < SimulatorContentManager.allClients.length; i++) {
+			for (int j = 0; j < clientCache.cache.size(); j++) {
+				if (this.clientNumber != i) {
+					if (SimulatorContentManager.allClients[i].getClientCache()
+							.contains(clientCache.cache.get(j))) {
+						logFile.writeToFile(this.clientNumber, i
+								+ " -client scan");
+						logFile.writeToFile(
+								this.clientNumber,
+								"in "
+										+ SimulatorContentManager.allClients[i].clientNumber
+										+ " client");
+						isUnique = false;
+					} else {
+						logFile.writeToFile(this.clientNumber, i
+								+ " -client scan");
+						logFile.writeToFile(
+								this.clientNumber,
+								"in "
+										+ SimulatorContentManager.allClients[i].clientNumber
+										+ " client");
+						isUnique = true;
+					}
+
+					if (isUnique) {
+						logFile.writeToFile(this.clientNumber,
+								clientCache.cache.get(j) + " is a singlet");
+						Random r = new Random();
+						int whereTosendTo = r
+								.nextInt(SimulatorContentManager.allClients.length - 1) + 1;
+						logFile.writeToFile(this.clientNumber,
+								"Fowarding to..  " + whereTosendTo);
+						logFile.writeToFile(this.clientNumber,
+								"My cache was:  " + clientCache.cache);
+						updateLocalCacheFIFO(whereTosendTo, reqBlock);
+						clientCache.cache.set(j, reqBlock);
+						logFile.writeToFile(this.clientNumber, "My cache is:  "
+								+ clientCache.cache);
+						logFile.writeToFile(
+								this.clientNumber,
+								"Where it was sent to cache:  "
+										+ SimulatorContentManager.allClients[whereTosendTo]
+												.getClientCache());
+						int value = recircArray.get(reqBlock);
+						value = value - 1;
+						recircArray.put(reqBlock, value);
+						logFile.writeToFile(this.clientNumber, "arr "
+								+ recircArray);
+						System.out.println("-----------: " + recircArray);
+						returnValues[0] = recircArray;
+						returnValues[1] = clientCache.cache;
+
+					}
+
+					else {
+						clientCache.cache.set(j, reqBlock);
+						returnValues[0] = recircArray;
+						returnValues[1] = clientCache.cache;
+					}
+
+					return returnValues;
+				}
+			}
+			
+			continue;
+		}
+		return returnValues;
+	}
+
+	synchronized private void updateLocalCacheFIFO(int forwardTo, int reqBlock) {
+		logFile.writeToFile(
+				this.clientNumber,
+				forwardTo
+						+ " cache is:  "
+						+ SimulatorContentManager.allClients[forwardTo]
+								.getClientCache());
+
+		if (clientCache.cache.size() < clientBlockSize) {
+			System.out.println("Adding...");
+			SimulatorContentManager.allClients[forwardTo].clientCache.cache
+					.add(reqBlock);
+			int clientId = SimulatorContentManager.allClients[forwardTo].clientNumber;
+			ArrayList<Integer> localCacheUpdated = SimulatorContentManager.allClients[forwardTo]
+					.getClientCache();
+			SimulatorContentManager.updateContentManager(clientId, reqBlock,
+					localCacheUpdated, logFile);
+		} else {
+
+			SimulatorContentManager.allClients[forwardTo].getClientCache()
+					.remove(0);
+			SimulatorContentManager.allClients[forwardTo].clientCache.cache
+					.add(reqBlock);
+			int clientId = SimulatorContentManager.allClients[forwardTo].clientNumber;
+			ArrayList<Integer> localCacheUpdated = SimulatorContentManager.allClients[forwardTo]
+					.getClientCache();
+			SimulatorContentManager.updateContentManager(clientId, reqBlock,
+					localCacheUpdated, logFile);
+		}
+	}
+
 }
