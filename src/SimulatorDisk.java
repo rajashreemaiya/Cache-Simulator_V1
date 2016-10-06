@@ -15,7 +15,7 @@ import java.util.*;
  */
 public class SimulatorDisk {
 
-	static int[] memory = new int[2048];
+	static int[] memory = new int[256];
 
 	/**
 	 * Fill the main memory. TODO: This is dummy data, what will be here when we

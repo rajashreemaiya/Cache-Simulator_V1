@@ -218,17 +218,6 @@ public class SimulatorClient extends Thread {
 			minIndex = indexArray.indexOf(Collections.min(indexArray));
 		}
 		
-//		if (indexArray.size() < this.clientCache.cache.size()) {
-//			clientCache.cache.set(minIndex, reqBlock);
-//			accessCounter = accessCounter + 1;
-//			indexArray.add(accessCounter);
-//		}
-//		else
-//		{
-//			clientCache.cache.set(minIndex, reqBlock);
-//			accessCounter = accessCounter + 1;
-//			indexArray.set(minIndex, accessCounter);
-//		}
 		clientCache.cache.set(minIndex, reqBlock);
 		accessCounter = accessCounter + 1;
 		indexArray.set(minIndex, accessCounter);
@@ -375,8 +364,8 @@ public class SimulatorClient extends Thread {
 
 		SimulatorContentManager.lookUpTable.put(this.clientNumber, client_data);
 
-		for (int j = 0; j < 500; j++) {
-			int reqBlock = random.nextInt(100) + 1;
+		for (int j = 0; j < 100; j++) {
+			int reqBlock = random.nextInt(200) + 1;
 			logFile.writeToFile(this.clientNumber, "\n");
 
 			logFile.writeToFile(this.clientNumber, "Client "
