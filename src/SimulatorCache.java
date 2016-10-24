@@ -13,13 +13,13 @@ public class SimulatorCache {
 	/*
 	 * This array list will act as the cache
 	 */
-	ArrayList<Integer> cache;
+	List<Integer> cache;
 
 	public SimulatorCache(int blockSize) {
 		cache = new ArrayList<Integer>(blockSize);
 	}
 
-	public ArrayList<Integer> getCache() {
+	public List<Integer> getCache() {
 		return this.cache;
 	}
 

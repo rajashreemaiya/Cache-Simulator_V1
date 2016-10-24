@@ -16,8 +16,9 @@ import java.util.Random;
 public class SimulatorContentManager {
 
 	/* Make the map synchronized object, ensures thread safety */
-	static Map<Integer, ArrayList> lookUpTable = Collections
-			.synchronizedMap(new HashMap<Integer, ArrayList>());
+	static Map<Integer, List> lookUpTable = Collections
+			.synchronizedMap(new HashMap<Integer, List>());
+	static Map<Integer, Integer> recircArray; 
 	static SimulatorClient[] allClients;
 
 	/**
@@ -37,10 +38,11 @@ public class SimulatorContentManager {
 		 * TODO: This will be a loop for n clients - look in all clients caches
 		 * for value, so you do not have to go to system cache
 		 */
+
 		logFile.writeToFile(clientNum, "Searching content manager");
 		logFile.writeToFile(clientNum, "Finding in neighbor cache...");
-		for (Map.Entry<Integer, ArrayList> entry : lookUpTable.entrySet()) {
-			ArrayList<Integer> values1 = entry.getValue();
+		for (Map.Entry<Integer, List> entry : lookUpTable.entrySet()) {
+			List<Integer> values1 = entry.getValue();
 			if (values1.contains(req_data) && clientNum != entry.getKey()) {
 				return entry.getKey();
 			}
@@ -53,7 +55,7 @@ public class SimulatorContentManager {
 	 * and also put that in the system cache so I have latest copies.
 	 */
 	public synchronized static void updateContentManager(int clientNum,
-			int reqData, ArrayList<Integer> localCacheUpdated,
+			int reqData, List<Integer> localCacheUpdated,
 			SimulatorLogger logFile) {
 		synchronized (lookUpTable) {
 			lookUpTable.put(clientNum, localCacheUpdated);

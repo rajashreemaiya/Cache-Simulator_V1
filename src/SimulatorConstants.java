@@ -18,4 +18,7 @@ public class SimulatorConstants {
 	static int TODISK;
 	static int FROMDISK;
 	static String ALGORITHM;
+	static String SERVER_ALGORITHM;
+	static String FILEPREFIX;
+	static int CLIENTS;
 }
