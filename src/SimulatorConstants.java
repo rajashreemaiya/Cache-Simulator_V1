@@ -21,4 +21,6 @@ public class SimulatorConstants {
 	static String SERVER_ALGORITHM;
 	static String FILEPREFIX;
 	static int CLIENTS;
+	static int DISKACCESSCOUNT;
+	static Integer DATAREQUESTS;
 }

@@ -6,7 +6,7 @@ import java.nio.file.Paths;
 import java.util.*;
 
 /**
- * 
+ * Initializes disk memory for the simulation
  */
 
 /**

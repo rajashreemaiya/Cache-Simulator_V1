@@ -42,6 +42,7 @@ public class SimulatorServer {
 		}
 
 		else {
+			SimulatorConstants.DISKACCESSCOUNT++;
 			logFile.writeToFile(clientNum, "Not in server memory");
 			logFile.writeToFile(clientNum, "Getting value from disk");
 			mytickCount.setTickCount(SimulatorConstants.TODISK);

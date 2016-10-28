@@ -14,7 +14,7 @@ import java.util.*;
 public class SimulatorDriver {
 
 	public static void main(String[] args) {
-		
+
 		Properties prop = new Properties();
 		if (args.length != 1) {
 			System.out.println("Please attach input configuration file");
@@ -48,11 +48,14 @@ public class SimulatorDriver {
 					* nCachedelta) {
 				for (int serversize = nServerInit; serversize < nServerFinal; serversize = serversize
 						* nServerdelta) {
-					
+					SimulatorConstants.DISKACCESSCOUNT = 0;
+					SimulatorConstants.DATAREQUESTS = 0;
+
+					System.out.println(SimulatorConstants.DATAREQUESTS);
 					System.out.println("Main Memory size: "
 							+ SimulatorDisk.memory.length);
 					SimulatorDisk.setMemory();
-					
+
 					SimulatorContentManager.recircArray = Collections
 							.synchronizedMap(new HashMap<Integer, Integer>());
 
@@ -85,46 +88,58 @@ public class SimulatorDriver {
 					SimulatorConstants.SERVER_ALGORITHM = prop
 							.getProperty("serverAlgorithm");
 					SimulatorConstants.FILEPREFIX = prop
-							.getProperty("filePrefix"); 
-					SimulatorConstants.CLIENTS = numOfClients;
+							.getProperty("filePrefix");
+//					SimulatorConstants.CLIENTS = numOfClients;
 
-					
+					 SimulatorConstants.CLIENTS = 5;
+
 					SimulatorServer.serverCacheSize = serverMemory;
 					SimulatorServer.setServerMemory();
-//					System.out.println("Main memory contents: ");
-//					SimulatorDisk.printMainMemory();
-//					System.out.println();
+					// System.out.println("Main memory contents: ");
+					// SimulatorDisk.printMainMemory();
+					// System.out.println();
 					SimulatorContentManager.allClients = new SimulatorClient[numOfClients];
 					for (int i = 0; i < numOfClients; i++) {
 						SimulatorClient client = new SimulatorClient(i,
 								sizeOfClientCache);
 						SimulatorContentManager.allClients[i] = client;
 					}
-					
+
 					System.out.println("Configurations..");
-					System.out.println("Clients: " +numOfClients + " Server Memory: " +  serversize + " Local Cache Size: "+ sizeOfClientCache );
+					System.out.println("Clients: " + numOfClients
+							+ " Server Memory: " + serversize
+							+ " Local Cache Size: " + sizeOfClientCache);
 
 					for (int i = 0; i < SimulatorContentManager.allClients.length; i++) {
 						SimulatorContentManager.allClients[i].start();
 					}
 
+					try {
+						Thread.sleep(1000);
+					} catch (InterruptedException e1) {
+						e1.printStackTrace();
+					}
 					ArrayList<Integer> totalTicks = new ArrayList<Integer>();
 
-					for (int i = 0; i < SimulatorContentManager.allClients.length; i++) {
+					for (int tnum = 0; tnum < SimulatorContentManager.allClients.length; tnum++) {
 						try {
-							Thread thread = SimulatorContentManager.allClients[i];
+							Thread thread = SimulatorContentManager.allClients[tnum];
 							thread.join();
 							totalTicks
-									.add(SimulatorContentManager.allClients[i].mytickCount
+									.add(SimulatorContentManager.allClients[tnum].mytickCount
 											.getTickCount());
 							inLocalCache
-									.add(SimulatorContentManager.allClients[i].LocalcacheHits);
+									.add(SimulatorContentManager.allClients[tnum].LocalcacheHits);
 							inNeighborCache
-									.add(SimulatorContentManager.allClients[i].NeighborcacheHits);
+									.add(SimulatorContentManager.allClients[tnum].NeighborcacheHits);
 							cacheMiss
-									.add(SimulatorContentManager.allClients[i].cacheMiss);
+									.add(SimulatorContentManager.allClients[tnum].cacheMiss);
+							// System.out
+							// .println("Completed "
+							// +
+							// SimulatorContentManager.allClients[tnum].clientNumber);
 						} catch (InterruptedException e) {
-							e.printStackTrace();
+
 						}
 					}
 
@@ -133,36 +148,35 @@ public class SimulatorDriver {
 						ticks += totalTicks.get(i);
 					}
 
-//					System.out.println(cacheMiss);
-//					System.out.println(inLocalCache);
-//					System.out.println(inNeighborCache);
-//					System.out.println(totalTicks);
-//					System.out.println("For " + numOfClients
-//							+ " clients, the total tick count is: " + ticks);
+					// System.out.println(cacheMiss);
+					// System.out.println(inLocalCache);
+					// System.out.println(inNeighborCache);
+					// System.out.println(totalTicks);
+					// System.out.println("For " + numOfClients
+					// + " clients, the total tick count is: " + ticks);
 
 					int localHits = 0;
 					for (int i = 0; i < inLocalCache.size(); i++) {
 						localHits += inLocalCache.get(i);
 					}
-//					System.out.println("For " + numOfClients
-//							+ " clients, the local cache hit is: " + localHits);
+					// System.out.println("For " + numOfClients
+					// + " clients, the local cache hit is: " + localHits);
 
 					int neighborHits = 0;
 					for (int i = 0; i < inNeighborCache.size(); i++) {
 						neighborHits += inNeighborCache.get(i);
 					}
-//					System.out.println("For " + numOfClients
-//							+ " clients, the neighbor cache hit is: "
-//							+ neighborHits);
-//					
-
+					// System.out.println("For " + numOfClients
+					// + " clients, the neighbor cache hit is: "
+					// + neighborHits);
+					//
 
 					int cacheMisses = 0;
 					for (int i = 0; i < cacheMiss.size(); i++) {
 						cacheMisses += cacheMiss.get(i);
 					}
-//					System.out.println("For " + numOfClients
-//							+ " clients, the cache miss is: " + cacheMisses);
+					// System.out.println("For " + numOfClients
+					// + " clients, the cache miss is: " + cacheMisses);
 
 					double localHitRate = (localHits / (double) (neighborHits
 							+ cacheMisses + localHits)) * 100;
@@ -171,7 +185,13 @@ public class SimulatorDriver {
 					double missRate = (cacheMisses / (double) (neighborHits
 							+ cacheMisses + localHits)) * 100;
 
-					String filename = "Output_traces/"+propFileName + "_output.csv";
+					System.out.println("Disk accessed: "
+							+ SimulatorConstants.DISKACCESSCOUNT);
+					System.out.println("Data Requests: "
+							+ SimulatorConstants.DATAREQUESTS);
+					
+					String filename = "Output_traces/" + propFileName
+							+ "_output.csv";
 					File file = new File(filename);
 					file.getParentFile().mkdirs();
 					try {
@@ -190,7 +210,9 @@ public class SimulatorDriver {
 								+ ","
 								+ new DecimalFormat("#.##")
 										.format(neighborHitRate) + ","
-								+ new DecimalFormat("#.##").format(missRate));
+								+ new DecimalFormat("#.##").format(missRate)
+								+ ","
+								+ SimulatorConstants.DISKACCESSCOUNT);
 						writer.append("\n");
 						writer.flush();
 						writer.close();
@@ -199,6 +221,8 @@ public class SimulatorDriver {
 					}
 				}
 			}
+
+			
 
 		}
 
