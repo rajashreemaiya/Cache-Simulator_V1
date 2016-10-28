@@ -4,7 +4,6 @@ import java.util.*;
 
 /**
  * Class that drives the simulation.
- * TODO: Settings have to be loaded from the configuration file
  */
 
 /**
