@@ -35,10 +35,6 @@ public class SimulatorContentManager {
 	public synchronized static int searchNeighborCache(int clientNum,
 			int req_data, SimulatorLogger logFile) {
 
-		/*
-		 * TODO: This will be a loop for n clients - look in all clients caches
-		 * for value, so you do not have to go to system cache
-		 */
 
 		logFile.writeToFile(clientNum, "Searching content manager");
 		logFile.writeToFile(clientNum, "Finding in neighbor cache...");
