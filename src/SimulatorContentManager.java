@@ -19,8 +19,9 @@ public class SimulatorContentManager {
 	/* Make the map synchronized object, ensures thread safety */
 	static Map<Integer, List> lookUpTable = Collections
 			.synchronizedMap(new HashMap<Integer, List>());
-	static Map<Integer, Integer> recircArray; 
+	static Map<ArrayList<Integer>, Integer> blockArrayCounter;
 	static SimulatorClient[] allClients;
+	public static final Object lock = new Object();
 
 	/**
 	 * 

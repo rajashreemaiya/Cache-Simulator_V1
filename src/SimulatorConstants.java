@@ -23,4 +23,6 @@ public class SimulatorConstants {
 	static int CLIENTS;
 	static int DISKACCESSCOUNT;
 	static Integer DATAREQUESTS;
+	static int FOUNDONSERVER;
+	static int NOTNEIGHBOR;
 }

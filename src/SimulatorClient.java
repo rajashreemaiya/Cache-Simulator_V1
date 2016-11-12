@@ -1,16 +1,7 @@
 import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.util.*;
-
-import javax.sound.sampled.ReverbType;
-
-import org.apache.commons.math3.linear.MatrixUtils;
-
-import com.opencsv.CSVReader;
 
 /**
  * This class initializes each client and it's operations
@@ -42,7 +33,7 @@ public class SimulatorClient extends Thread {
 		this.clientNumber = clientNumber;
 		this.mytickCount = new SimulatorTickCounts();
 		this.setBlockSize(blockSize);
-		// this.fillInitialCache();
+		this.fillInitialCache();
 		SimulatorContentManager.lookUpTable
 				.put(clientNumber, clientCache.cache);
 	}
@@ -50,13 +41,16 @@ public class SimulatorClient extends Thread {
 	private void fillInitialCache() {
 		Random r = new Random();
 		int i = 0;
+		int p = 100000;
 		while (i < clientBlockSize) {
-			int reqBlock = r.nextInt(20) + 1;
-			if (!clientCache.cache.contains(reqBlock)) {
-				clientCache.cache.add(reqBlock);
-				SimulatorContentManager.recircArray.put(reqBlock, 3);
-				i++;
-			}
+			int reqBlock = r.nextInt(20000) + 1;
+			clientCache.cache.add(reqBlock);
+			clientCache.pattern_index.add(p);
+			p = p + 1;
+			Integer[] temp = new Integer[2];
+			temp[0] = reqBlock;
+			temp[1] = reqBlock;
+			i++;
 		}
 	}
 
@@ -117,11 +111,11 @@ public class SimulatorClient extends Thread {
 
 			String line = null;
 			Scanner scanner = null;
-			reader = new BufferedReader(new FileReader("Input_traces/"
-					+ SimulatorConstants.CLIENTS + "/"
-					+ SimulatorConstants.FILEPREFIX
-					+ SimulatorConstants.CLIENTS + "_" + this.clientNumber
-					+ ".csv"));
+			reader = new BufferedReader(new FileReader(
+					"/Users/rajashreemaiya/Documents/workspace/Cache-Simulator-1/Patterns/"
+							+ SimulatorConstants.FILEPREFIX
+							+ SimulatorConstants.CLIENTS + "_"
+							+ this.clientNumber + ".csv"));
 
 			while ((line = reader.readLine()) != null) {
 
@@ -130,7 +124,13 @@ public class SimulatorClient extends Thread {
 				scanner.useDelimiter("\n");
 				while (scanner.hasNext()) {
 					String data = scanner.next();
-					int reqBlock = Integer.parseInt(data);
+					String[] parts = data.split(",");
+					int reqBlock = Integer.parseInt(parts[0]);
+					int pat_index = Integer.parseInt(parts[1]);
+
+					logFile.writeToFile(this.clientNumber, "\n");
+					logFile.writeToFile(this.clientNumber, "data request:  "
+							+ reqBlock);
 
 					List<Integer> client_data = this.getClientCache();
 					SimulatorContentManager.lookUpTable.put(this.clientNumber,
@@ -144,8 +144,10 @@ public class SimulatorClient extends Thread {
 						}
 
 						else {
+							logFile.writeToFile(this.clientNumber, "Filling...");
 							clientCache.cache.add(reqBlock);
 							freq.put(reqBlock, value);
+							clientCache.pattern_index.add(pat_index);
 						}
 					}
 
@@ -173,14 +175,14 @@ public class SimulatorClient extends Thread {
 											this.clientNumber, reqBlock);
 									this.NeighborcacheHits++;
 									Object[] localCacheUpdated = updateLocalCacheLFU(
-											reqBlock, freq);
+											reqBlock, freq, pat_index);
 									freq = (Map<Integer, Integer>) localCacheUpdated[1];
 								}
 
 								else {
 									goToServer(this.clientNumber, reqBlock);
 									Object[] localCacheUpdated = updateLocalCacheLFU(
-											reqBlock, freq);
+											reqBlock, freq, pat_index);
 									SimulatorContentManager
 											.updateContentManager(
 													this.clientNumber,
@@ -198,7 +200,7 @@ public class SimulatorClient extends Thread {
 								if (checkFalseMiss == -1) {
 									goToServer(this.clientNumber, reqBlock);
 									Object[] localCacheUpdated = updateLocalCacheLFU(
-											reqBlock, freq);
+											reqBlock, freq, pat_index);
 									SimulatorContentManager
 											.updateContentManager(
 													this.clientNumber,
@@ -209,7 +211,7 @@ public class SimulatorClient extends Thread {
 								} else {
 									this.NeighborcacheHits++;
 									Object[] localCacheUpdated = updateLocalCacheLFU(
-											reqBlock, freq);
+											reqBlock, freq, pat_index);
 									freq = (Map<Integer, Integer>) localCacheUpdated[1];
 								}
 							}
@@ -225,32 +227,51 @@ public class SimulatorClient extends Thread {
 	}
 
 	private Object[] updateLocalCacheLFU(int reqBlock,
-			Map<Integer, Integer> freq) {
+			Map<Integer, Integer> freq, int pattern_index) {
 
 		ArrayList<Integer> minfreq = new ArrayList<Integer>();
 		Object[] returnValues = new Object[2];
 		if (freq.containsKey(reqBlock)) {
 			int value = freq.get(reqBlock);
 			freq.put(reqBlock, value + 1);
-			// minfreq.add(freq.get(reqBlock));
 		}
 
 		else {
 			int value = 0;
 			freq.put(reqBlock, value);
-			// minfreq.add(freq.get(reqBlock));
 		}
-		// System.out.println(freq);
 		logFile.writeToFile(this.clientNumber, " --- " + clientCache.cache);
 		logFile.writeToFile(this.clientNumber, "" + freq);
 		for (int i = 0; i < clientCache.cache.size(); i++) {
 			int cacheElement = clientCache.cache.get(i);
-			// System.out.println(cacheElement);
 			minfreq.add(freq.get(cacheElement));
 		}
-		// System.out.println(minfreq);
+
+		logFile.writeToFile(this.clientNumber, " index.."
+				+ clientCache.pattern_index);
 		int whatToReplace = minfreq.indexOf(Collections.min(minfreq));
+		int val = clientCache.cache.get(whatToReplace);
+		int pat_index = clientCache.pattern_index.get(whatToReplace);
 		clientCache.cache.set(whatToReplace, reqBlock);
+		clientCache.pattern_index.set(whatToReplace, pattern_index);
+		synchronized (clientCache.pattern_index) {
+			Iterator<Integer> iter = clientCache.pattern_index.iterator();
+
+			while (iter.hasNext()) {
+				int p = iter.next();
+				if (p == pat_index) {
+					int partOfBlock = clientCache.pattern_index.indexOf(p);
+					logFile.writeToFile(this.clientNumber, "Removing.."
+							+ clientCache.cache.get(partOfBlock));
+					clientCache.cache.remove(partOfBlock);
+					iter.remove();
+					logFile.writeToFile(this.clientNumber, "Now the size is: "
+							+ clientCache.cache.size());
+				}
+			}
+
+		}
+
 		logFile.writeToFile(this.clientNumber, " frequencies " + minfreq);
 		logFile.writeToFile(this.clientNumber,
 				" minimum " + minfreq.indexOf(Collections.min(minfreq)));
@@ -278,15 +299,10 @@ public class SimulatorClient extends Thread {
 			String line = null;
 			Scanner scanner = null;
 			reader = new BufferedReader(new FileReader(
-					"/Users/rajashreemaiya/Documents/workspace/Cache-Simulator-1/Input_traces/"
-							+ SimulatorConstants.CLIENTS + "/"
+					"/Users/rajashreemaiya/Documents/workspace/Cache-Simulator-1/Patterns/"
 							+ SimulatorConstants.FILEPREFIX
 							+ SimulatorConstants.CLIENTS + "_"
 							+ this.clientNumber + ".csv"));
-			//
-			// reader = new BufferedReader(new FileReader("Input_traces/"
-			// + SimulatorConstants.FILEPREFIX + this.clientNumber
-			// + ".csv"));
 
 			for (i = 0; i < clientBlockSize; i++) {
 				indexArray.add(0);
@@ -299,12 +315,18 @@ public class SimulatorClient extends Thread {
 				scanner.useDelimiter("\n");
 				while (scanner.hasNext()) {
 					String data = scanner.next();
-					int reqBlock = Integer.parseInt(data);
+					String[] parts = data.split(",");
+					int reqBlock = Integer.parseInt(parts[0]);
+					int pat_index = Integer.parseInt(parts[1]);
 
 					logFile.writeToFile(this.clientNumber, "\n");
 					logFile.writeToFile(this.clientNumber, "Client "
 							+ this.clientNumber + " is requesting the data "
 							+ reqBlock);
+					logFile.writeToFile(this.clientNumber, "Cache:  "
+							+ clientCache.cache);
+					logFile.writeToFile(this.clientNumber, "Index array:  "
+							+ indexArray);
 
 					int clientNum = this.clientNumber;
 					List<Integer> client_data = this.getClientCache();
@@ -313,6 +335,10 @@ public class SimulatorClient extends Thread {
 
 					if (clientCache.cache.size() < clientBlockSize) {
 						clientCache.cache.add(reqBlock);
+						int index = clientCache.cache.indexOf(reqBlock);
+						clientCache.pattern_index.add(pat_index);
+						accessCounter = accessCounter + 1;
+						indexArray.set(index, accessCounter);
 					}
 
 					else {
@@ -344,7 +370,8 @@ public class SimulatorClient extends Thread {
 											this.clientNumber, reqBlock);
 									this.NeighborcacheHits++;
 									Object[] localCacheUpdated = updateLocalCacheLRU(
-											reqBlock, indexArray, accessCounter);
+											reqBlock, indexArray,
+											accessCounter, pat_index);
 									accessCounter = (int) localCacheUpdated[1];
 									indexArray = (ArrayList<Integer>) localCacheUpdated[0];
 								}
@@ -352,7 +379,8 @@ public class SimulatorClient extends Thread {
 								else {
 									goToServer(this.clientNumber, reqBlock);
 									Object[] localCacheUpdated = updateLocalCacheLRU(
-											reqBlock, indexArray, accessCounter);
+											reqBlock, indexArray,
+											accessCounter, pat_index);
 									accessCounter = (int) localCacheUpdated[1];
 									indexArray = (ArrayList<Integer>) localCacheUpdated[0];
 									SimulatorContentManager
@@ -371,7 +399,8 @@ public class SimulatorClient extends Thread {
 								if (checkFalseMiss == -1) {
 									goToServer(this.clientNumber, reqBlock);
 									Object[] localCacheUpdated = updateLocalCacheLRU(
-											reqBlock, indexArray, accessCounter);
+											reqBlock, indexArray,
+											accessCounter, pat_index);
 									accessCounter = (int) localCacheUpdated[1];
 									indexArray = (ArrayList<Integer>) localCacheUpdated[0];
 									SimulatorContentManager
@@ -383,7 +412,8 @@ public class SimulatorClient extends Thread {
 								} else {
 									this.NeighborcacheHits++;
 									Object[] localCacheUpdated = updateLocalCacheLRU(
-											reqBlock, indexArray, accessCounter);
+											reqBlock, indexArray,
+											accessCounter, pat_index);
 									accessCounter = (int) localCacheUpdated[1];
 									indexArray = (ArrayList<Integer>) localCacheUpdated[0];
 								}
@@ -400,8 +430,7 @@ public class SimulatorClient extends Thread {
 	}
 
 	private Object[] updateLocalCacheLRU(int reqBlock,
-			ArrayList<Integer> indexArray, int accessCounter) {
-		// System.out.println(clientCache.cache.size());
+			ArrayList<Integer> indexArray, int accessCounter, int pattern_index) {
 
 		Object[] returnValues = new Object[3];
 		logFile.writeToFile(this.clientNumber, "Cache is:.."
@@ -415,12 +444,32 @@ public class SimulatorClient extends Thread {
 			minIndex = indexArray.indexOf(min);
 		}
 
-		// System.out.println("----" + indexArray.size());
-		// System.out.println(this.clientNumber + " ---- " + indexArray);
-		// System.out.println(clientCache.cache.size());
+		int whatToRemove = clientCache.cache.get(minIndex);
+		int pat_index = clientCache.pattern_index.get(minIndex);
+		logFile.writeToFile(this.clientNumber, "what to remove.."
+				+ whatToRemove);
+		logFile.writeToFile(this.clientNumber, "pat ind.." + pat_index);
 		clientCache.cache.set(minIndex, reqBlock);
+		clientCache.pattern_index.set(minIndex, pattern_index);
 		accessCounter = accessCounter + 1;
 		indexArray.set(minIndex, accessCounter);
+		synchronized (clientCache.pattern_index) {
+			Iterator<Integer> iter = clientCache.pattern_index.iterator();
+
+			while (iter.hasNext()) {
+				int p = iter.next();
+				if (p == pat_index) {
+					int partOfBlock = clientCache.pattern_index.indexOf(p);
+					logFile.writeToFile(this.clientNumber, "Removing.."
+							+ clientCache.cache.get(partOfBlock));
+					clientCache.cache.remove(partOfBlock);
+					iter.remove();
+					logFile.writeToFile(this.clientNumber, "Now the size is: "
+							+ clientCache.cache.size());
+				}
+			}
+
+		}
 
 		returnValues[0] = indexArray;
 		returnValues[1] = accessCounter;
@@ -447,11 +496,11 @@ public class SimulatorClient extends Thread {
 		try {
 			String line = null;
 			Scanner scanner = null;
-			reader = new BufferedReader(new FileReader("Input_traces/"
-					+ SimulatorConstants.CLIENTS + "/"
-					+ SimulatorConstants.FILEPREFIX
-					+ SimulatorConstants.CLIENTS + "_" + this.clientNumber
-					+ ".csv"));
+			reader = new BufferedReader(new FileReader(
+					"/Users/rajashreemaiya/Documents/workspace/Cache-Simulator-1/Patterns/"
+							+ SimulatorConstants.FILEPREFIX
+							+ SimulatorConstants.CLIENTS + "_"
+							+ this.clientNumber + ".csv"));
 
 			while ((line = reader.readLine()) != null) {
 
@@ -472,6 +521,7 @@ public class SimulatorClient extends Thread {
 
 					if (clientCache.cache.size() < clientBlockSize) {
 						clientCache.cache.add(reqBlock);
+						// clientCache.pattern_index.add(e)
 					}
 
 					else {
@@ -581,8 +631,6 @@ public class SimulatorClient extends Thread {
 		return false;
 	}
 
-	// ---------------------
-
 	/**
 	 * Implements FIFO replacement policy
 	 */
@@ -594,13 +642,10 @@ public class SimulatorClient extends Thread {
 			Scanner scanner = null;
 
 			reader = new BufferedReader(new FileReader(
-					"/Users/rajashreemaiya/Documents/workspace/Cache-Simulator-1/Input_traces/"
-							+ SimulatorConstants.CLIENTS + "/"
+					"/Users/rajashreemaiya/Documents/workspace/Cache-Simulator-1/Patterns/"
 							+ SimulatorConstants.FILEPREFIX
 							+ SimulatorConstants.CLIENTS + "_"
 							+ this.clientNumber + ".csv"));
-
-			// reader = new BufferedReader(new FileReader("psuedodata.csv"));
 
 			while ((line = reader.readLine()) != null) {
 
@@ -610,11 +655,9 @@ public class SimulatorClient extends Thread {
 				while (scanner.hasNext()) {
 					String data = scanner.next();
 					String[] parts = data.split(",");
-					System.out.println(data);
 					int reqBlock = Integer.parseInt(parts[0]);
 					int pat_index = Integer.parseInt(parts[1]);
-					// SimulatorContentManager.patterns.add(pat_index,);
-					// System.out.println(pat_index);
+
 					logFile.writeToFile(this.clientNumber, "\n");
 					logFile.writeToFile(this.clientNumber, this.clientNumber
 							+ " is requesting.. " + reqBlock);
@@ -696,22 +739,13 @@ public class SimulatorClient extends Thread {
 		}
 	}
 
-	private synchronized List<Integer> updateLocalCacheFIFO(int reqBlock,
-			int pattern_index) {
+	private List<Integer> updateLocalCacheFIFO(int reqBlock, int pattern_index) {
 		if (clientCache.cache.size() < clientBlockSize) {
 			clientCache.cache.add(reqBlock);
+			clientCache.pattern_index.add(pattern_index);
 		}
 
 		else {
-			logFile.writeToFile(this.clientNumber, "Indicies array:.."
-					+ clientCache.pattern_index);
-			logFile.writeToFile(this.clientNumber, "Cache is:.."
-					+ clientCache.cache);
-
-			logFile.writeToFile(this.clientNumber, "Replacing..");
-
-			// logFile.writeToFile(this.clientNumber, "Removing..."
-			// + clientCache.cache.get(0));
 
 			int whatToRemove = clientCache.cache.get(0);
 			int pat_index = clientCache.pattern_index.get(0);
@@ -723,29 +757,16 @@ public class SimulatorClient extends Thread {
 					int p = iter.next();
 					if (p == pat_index) {
 						int partOfBlock = clientCache.pattern_index.indexOf(p);
-						logFile.writeToFile(this.clientNumber, "Removing.."
-								+ clientCache.cache.get(partOfBlock));
+
 						clientCache.cache.remove(partOfBlock);
 						iter.remove();
-						logFile.writeToFile(this.clientNumber,
-								"Now the size is: " + clientCache.cache.size());
+
 					}
 
 				}
-				// clientCache.cache.remove(0);
 				clientCache.cache.add(reqBlock);
 				clientCache.pattern_index.add(pattern_index);
 			}
-
-			// logFile.writeToFile(this.clientNumber, "Now the size is: "
-			// + clientCache.cache.size());
-
-			// logFile.writeToFile(this.clientNumber, "Cache is: "
-			// + clientCache.cache);
-
-			logFile.writeToFile(this.clientNumber, "Replaced Cache is: "
-					+ clientCache.cache);
-
 		}
 		return clientCache.cache;
 	}
@@ -822,6 +843,7 @@ public class SimulatorClient extends Thread {
 
 	private void goToServer(int clientNum, int reqBlock) {
 		cacheMiss++;
+		SimulatorConstants.NOTNEIGHBOR++;
 		mytickCount.setTickCount(SimulatorConstants.TOSERVER);
 		mytickCount.setTickCount(SimulatorConstants.FROMSERVER);
 		logFile.writeToFile(clientNum, "Not found in content manager: ");
@@ -841,7 +863,7 @@ public class SimulatorClient extends Thread {
 				mytickCount, SimulatorConstants.SERVER_ALGORITHM);
 	}
 
-	private void simNChance() {
+	private synchronized void simNChance() {
 
 		List<Integer> client_data = this.getClientCache();
 		SimulatorContentManager.lookUpTable.put(this.clientNumber, client_data);
@@ -851,25 +873,30 @@ public class SimulatorClient extends Thread {
 			int c = 0;
 			String line = null;
 			Scanner scanner = null;
+
 			reader = new BufferedReader(new FileReader(
-					"/Users/rajashreemaiya/Documents/workspace/Cache-Simulator-1/Input_traces/"
-							+ SimulatorConstants.CLIENTS + "/"
+					"/Users/rajashreemaiya/Documents/workspace/Cache-Simulator-1/Patterns/"
 							+ SimulatorConstants.FILEPREFIX
 							+ SimulatorConstants.CLIENTS + "_"
 							+ this.clientNumber + ".csv"));
 
-			// reader = new BufferedReader(new FileReader("Input_traces/"
+			// reader = new BufferedReader(new FileReader("5/"
 			// + SimulatorConstants.FILEPREFIX + this.clientNumber
 			// + ".csv"));
 
 			while ((line = reader.readLine()) != null) {
-
 				updateDataReqCount();
 				scanner = new Scanner(line);
 				scanner.useDelimiter("\n");
 				while (scanner.hasNext()) {
+
 					String data = scanner.next();
-					int reqBlock = Integer.parseInt(data);
+					String[] parts = data.split(",");
+					int reqBlock = Integer.parseInt(parts[0]);
+					int pattern_num = Integer.parseInt(parts[1]);
+					Integer[] counter = new Integer[2];
+					counter[0] = reqBlock;
+					counter[1] = pattern_num;
 
 					logFile.writeToFile(this.clientNumber, "\n");
 					logFile.writeToFile(this.clientNumber, "Iteration: " + c);
@@ -878,21 +905,13 @@ public class SimulatorClient extends Thread {
 							+ reqBlock);
 
 					if (clientCache.cache.size() < clientBlockSize) {
+						// System.out.println(this.clientNumber);
+
 						clientCache.cache.add(reqBlock);
+						clientCache.pattern_index.add(pattern_num);
 					}
 
 					else {
-
-						if (SimulatorContentManager.recircArray
-								.containsKey(reqBlock)) {
-							if (SimulatorContentManager.recircArray
-									.get(reqBlock) <= 0)
-								SimulatorContentManager.recircArray.put(
-										reqBlock, 3);
-						} else {
-							SimulatorContentManager.recircArray
-									.put(reqBlock, 3);
-						}
 
 						if (searchLocalCache(reqBlock) == true) {
 							this.LocalcacheHits++;
@@ -900,6 +919,7 @@ public class SimulatorClient extends Thread {
 						}
 
 						else {
+
 							mytickCount
 									.setTickCount(SimulatorConstants.TOCONTEXTMANAGER);
 							mytickCount
@@ -914,18 +934,21 @@ public class SimulatorClient extends Thread {
 									getDataFromNeighbor(whoHasBlock,
 											this.clientNumber, reqBlock);
 									this.NeighborcacheHits++;
-									updateLocalCacheNChance(reqBlock);
+									updateLocalCacheNChance(reqBlock,
+											pattern_num);
 								}
 
 								else {
 									goToServer(this.clientNumber, reqBlock);
-									Object[] localCacheUpdated = updateLocalCacheNChance(reqBlock);
+									Object[] localCacheUpdated = updateLocalCacheNChance(
+											reqBlock, pattern_num);
 									SimulatorContentManager
 											.updateContentManager(
 													this.clientNumber,
 													reqBlock,
 													(ArrayList<Integer>) localCacheUpdated[1],
 													logFile);
+
 								}
 							}
 
@@ -935,16 +958,19 @@ public class SimulatorClient extends Thread {
 										reqBlock, this.clientNumber);
 								if (checkFalseMiss == -1) {
 									goToServer(this.clientNumber, reqBlock);
-									Object[] localCacheUpdated = updateLocalCacheNChance(reqBlock);
+									Object[] localCacheUpdated = updateLocalCacheNChance(
+											reqBlock, pattern_num);
 									SimulatorContentManager
 											.updateContentManager(
 													this.clientNumber,
 													reqBlock,
 													(ArrayList<Integer>) localCacheUpdated[1],
 													logFile);
+
 								} else {
 									this.NeighborcacheHits++;
-									updateLocalCacheNChance(reqBlock);
+									updateLocalCacheNChance(reqBlock,
+											pattern_num);
 								}
 							}
 						}
@@ -958,10 +984,10 @@ public class SimulatorClient extends Thread {
 		}
 	}
 
-	private synchronized Object[] updateLocalCacheNChance(int reqBlock) {
-
+	private synchronized Object[] updateLocalCacheNChance(int reqBlock,
+			int p) {
+		Object[] returnValues = new Object[3];
 		ArrayList<Integer> allClients = new ArrayList<Integer>();
-
 		int numClients = SimulatorContentManager.allClients.length;
 
 		for (int i = 0; i < numClients; i++) {
@@ -970,111 +996,149 @@ public class SimulatorClient extends Thread {
 
 		int indexClient = allClients.indexOf(this.clientNumber);
 		allClients.remove(indexClient);
-		logFile.writeToFile(this.clientNumber, "Array of clients " + allClients);
 
-		Object[] returnValues = new Object[3];
-		boolean isUnique = false;
-		int cacheElement = clientCache.cache.get(0);
-		int index = clientCache.cache.indexOf(cacheElement);
-		synchronized (SimulatorContentManager.recircArray) {
-			logFile.writeToFile(this.clientNumber, ""
-					+ SimulatorContentManager.lookUpTable);
-			logFile.writeToFile(this.clientNumber, "arr "
-					+ SimulatorContentManager.recircArray);
+		synchronized (SimulatorContentManager.lock) {
+			ListIterator<Integer> iter = clientCache.pattern_index
+					.listIterator();
 
-			for (int i = 0; i < SimulatorContentManager.allClients.length; i++) {
-				if (SimulatorContentManager.allClients[i].clientNumber != this.clientNumber) {
+			int whatToRemove = clientCache.cache.get(0);
+			int pat_index = clientCache.pattern_index.get(0);
 
-					if (SimulatorContentManager.allClients[i].getClientCache()
-							.contains(cacheElement)) {
+			logFile.writeToFile(this.clientNumber, "What to Remove: "
+					+ whatToRemove);
+			logFile.writeToFile(this.clientNumber, "Pattern: " + pat_index);
 
-						logFile.writeToFile(
-								this.clientNumber,
-								SimulatorContentManager.allClients[i].clientNumber
-										+ " contains " + cacheElement);
-						logFile.writeToFile(this.clientNumber, "Not unique");
-						isUnique = false;
-						break;
+			synchronized (clientCache.pattern_index) {
+				synchronized (SimulatorContentManager.allClients) {
+					ArrayList<Integer> exists = new ArrayList<Integer>();
+					ArrayList<Integer> block = new ArrayList<Integer>();
+					ArrayList<Integer> block_p = new ArrayList<Integer>();
+
+					while (iter.hasNext()) {
+						if (pat_index == iter.next()) {
+
+							logFile.writeToFile(this.clientNumber, "Cache: "
+									+ clientCache.cache);
+							logFile.writeToFile(this.clientNumber,
+									"Pattern Array: "
+											+ clientCache.pattern_index);
+
+							int p_in = iter.nextIndex() - 1;
+
+							int e = clientCache.cache.get(p_in);
+
+							logFile.writeToFile(this.clientNumber, "element: "
+									+ e);
+							logFile.writeToFile(this.clientNumber,
+									"pattern: index " + p_in);
+
+							int a = SimulatorContentManager
+									.searchNeighborCache(this.clientNumber, e,
+											logFile);
+							exists.add(a);
+							block.add(e);
+							block_p.add(pat_index);
+						}
+					}
+
+					ArrayList<Integer> newP = new ArrayList<Integer>();
+					for (int i = 0; i < block.size(); i++) {
+						int v = block.get(i);
+						newP.add(v);
+					}
+					if (!SimulatorContentManager.blockArrayCounter
+							.containsKey(newP)) {
+						SimulatorContentManager.blockArrayCounter.put(newP, 3);
+					}
+
+					Integer[] temp = new Integer[2];
+
+					if (exists.contains(-1)) {
+						int r = new Random().nextInt(allClients.size());
+						int whereTosendTo = allClients.get(r);
+						logFile.writeToFile(this.clientNumber, "unique");
+						logFile.writeToFile(this.clientNumber, "c " + exists);
+						logFile.writeToFile(this.clientNumber, "b " + block);
+						logFile.writeToFile(this.clientNumber, "ppp " + block_p);
+
+						if (SimulatorContentManager.blockArrayCounter.get(newP) > 0) {
+							for (int b : block) {
+								int in = clientCache.cache.indexOf(b);
+								int p1 = clientCache.pattern_index.get(in);
+
+								temp[0] = b;
+								temp[1] = p1;
+
+								if (!SimulatorContentManager.blockArrayCounter
+										.containsKey(newP)) {
+									SimulatorContentManager.blockArrayCounter
+											.put(newP, 3);
+								}
+
+								SimulatorContentManager.allClients[whereTosendTo]
+										.updateLocalCacheFIFO(b, pat_index);
+
+								logFile.writeToFile(this.clientNumber,
+										"Adding " + b + " to " + whereTosendTo);
+
+								clientCache.cache.remove(in);
+								clientCache.pattern_index.remove(in);
+
+							}
+
+							int value = SimulatorContentManager.blockArrayCounter
+									.get(newP);
+							SimulatorContentManager.blockArrayCounter.put(newP,
+									value - 1);
+						}
+
+						else {
+							SimulatorContentManager.blockArrayCounter
+									.remove(newP);
+							for (int b : block) {
+								int in = clientCache.cache.indexOf(b);
+								int p1 = clientCache.pattern_index.get(in);
+
+								logFile.writeToFile(this.clientNumber,
+										"Survived enough times!");
+								clientCache.cache.remove(in);
+								clientCache.pattern_index.remove(in);
+							}
+						}
 					}
 
 					else {
-						isUnique = true;
-						logFile.writeToFile(this.clientNumber, cacheElement
-								+ " unique");
+						logFile.writeToFile(this.clientNumber, "not unique");
+						logFile.writeToFile(this.clientNumber, "p " + exists);
+						logFile.writeToFile(this.clientNumber, "b " + block);
+						for (int b : block) {
+							int in = clientCache.cache.indexOf(b);
+							clientCache.cache.remove(in);
+							clientCache.pattern_index.remove(in);
+						}
 					}
 				}
 			}
 
-			logFile.writeToFile(this.clientNumber, cacheElement + " "
-					+ isUnique);
-
-			if (isUnique) {
-
-				if (!SimulatorContentManager.recircArray.containsKey(reqBlock)) {
-					SimulatorContentManager.recircArray.put(reqBlock, 3);
-				}
-
-				if ((SimulatorContentManager.recircArray.get(cacheElement)) > 0) {
-					logFile.writeToFile(this.clientNumber, "Client list.."
-							+ allClients);
-					logFile.writeToFile(this.clientNumber, "Client list size.."
-							+ allClients.size());
-					int r = new Random().nextInt(allClients.size());
-					int whereTosendTo = allClients.get(r);
-					logFile.writeToFile(this.clientNumber, "Fowarding to..  "
-							+ whereTosendTo);
-					updateLocalCacheFIFO(whereTosendTo, cacheElement);
-					logFile.writeToFile(this.clientNumber, "My cache is:  "
-							+ clientCache.cache);
-					logFile.writeToFile(
-							this.clientNumber,
-							"Neighborcache is "
-									+ SimulatorContentManager.allClients[whereTosendTo]
-											.getClientCache());
-					int value = SimulatorContentManager.recircArray
-							.get(cacheElement);
-					SimulatorContentManager.recircArray.put(cacheElement,
-							value - 1);
-					clientCache.cache.set(index, reqBlock);
-					logFile.writeToFile(this.clientNumber, "arr "
-							+ SimulatorContentManager.recircArray);
-					returnValues[0] = SimulatorContentManager.recircArray;
-					returnValues[1] = clientCache.cache;
-				}
-
-				else {
-					logFile.writeToFile(this.clientNumber,
-							"Survived enough times!");
-					clientCache.cache.remove(index);
-					clientCache.cache.add(reqBlock);
-					returnValues[0] = SimulatorContentManager.recircArray;
-					returnValues[1] = clientCache.cache;
-				}
-			}
-
-			else {
-				logFile.writeToFile(this.clientNumber, "Not unique....removed");
-				clientCache.cache.remove(index);
+			if (clientCache.cache.size() < clientBlockSize) {
 				clientCache.cache.add(reqBlock);
-				returnValues[0] = SimulatorContentManager.recircArray;
-				returnValues[1] = clientCache.cache;
+				clientCache.pattern_index.add(p);
+				logFile.writeToFile(this.clientNumber, "XXXXXXXXXXXXXXX "
+						+ clientCache.cache.indexOf(reqBlock));
+				logFile.writeToFile(this.clientNumber, "YYYYYYYYYYYYYYY "
+						+ clientCache.pattern_index.indexOf(p));
+				logFile.writeToFile(this.clientNumber, "Cache: "
+						+ clientCache.cache);
+				logFile.writeToFile(this.clientNumber, "Pattern Array: "
+						+ clientCache.pattern_index);
+
 			}
+
+			returnValues[0] = SimulatorContentManager.blockArrayCounter;
+			returnValues[1] = clientCache.cache;
 		}
+
 		return returnValues;
 
 	}
-
-	synchronized private void updateLocalCacheFIFO1(int forwardTo, int reqBlock) {
-
-		logFile.writeToFile(this.clientNumber, "Replacing in " + forwardTo);
-		SimulatorContentManager.allClients[forwardTo].getClientCache()
-				.remove(0);
-		SimulatorContentManager.allClients[forwardTo].clientCache.cache
-				.add(reqBlock);
-		List<Integer> localCacheUpdated = SimulatorContentManager.allClients[forwardTo]
-				.getClientCache();
-		SimulatorContentManager.updateContentManager(forwardTo, reqBlock,
-				localCacheUpdated, logFile);
-	}
-
 }
