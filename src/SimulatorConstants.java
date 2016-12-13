@@ -3,7 +3,9 @@
  */
 
 /**
- * @author rmaiya
+ * Initializes constants from input configuration file. 
+ * 
+ * @author Rajashree K Maiya
  *
  */
 public class SimulatorConstants {

@@ -4,11 +4,9 @@ import java.util.ArrayList;
 /**
  * Logger class for each client,
  * creates a file and records all client activities.
- * Only for debugging..
- */
-
-/**
- * @author rmaiya
+ * Only for debugging.
+ * 
+ * @author Rajashree K Maiya
  *
  */
 public class SimulatorLogger {

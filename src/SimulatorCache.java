@@ -1,11 +1,10 @@
 import java.util.*;
 
 /**
- * The cache object
- */
-
-/**
- * @author rmaiya
+ * 
+ * Class to simulate the cache object
+ * 
+ * @author Rajashree K Maiya
  *
  */
 public class SimulatorCache {

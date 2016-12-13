@@ -1,16 +1,7 @@
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.*;
-
 /**
  * Initializes disk memory for the simulation
- */
-
-/**
- * @author rmaiya
+ * 
+ * @author Rajashree K Maiya
  *
  */
 public class SimulatorDisk {

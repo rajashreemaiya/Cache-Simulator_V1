@@ -1,31 +1,28 @@
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.text.DecimalFormat;
 import java.util.*;
 
 /**
- * This class initializes each client and it's operations
- */
-
-/**
- * @author rmaiya
+ * 
+ * This class initializes each client and its operations.
+ * 
+ * @author Rajashree K Maiya
  *
  */
 public class SimulatorClient extends Thread {
 	int clientNumber;
-	int dataInClient;
-	int dataToLookUp;
 	int LocalcacheHits = 0;
 	int NeighborcacheHits = 0;
 	int cacheMiss = 0;
 	static int dataRequests = 0;
 	Thread client;
-	String clientName;
 	int clientBlockSize;
 	SimulatorCache clientCache;
 	SimulatorTickCounts mytickCount;
 	SimulatorLogger logFile;
-	int[] clientTickCounts = new int[15];
 
 	public SimulatorClient(int clientNumber, int blockSize) {
 		this.clientBlockSize = this.setBlockSize(blockSize);
@@ -38,6 +35,9 @@ public class SimulatorClient extends Thread {
 				.put(clientNumber, clientCache.cache);
 	}
 
+	/**
+	 * Warm up the cache before calling replacement algorithms.
+	 */
 	private void fillInitialCache() {
 		Random r = new Random();
 		int i = 0;
@@ -72,6 +72,7 @@ public class SimulatorClient extends Thread {
 
 	}
 
+	@Override
 	public synchronized void run() {
 
 		this.logFile = new SimulatorLogger(this.clientNumber);
@@ -96,8 +97,15 @@ public class SimulatorClient extends Thread {
 			this.simLFU();
 		}
 
+		if (SimulatorConstants.ALGORITHM.equals("NChanceK")) {
+			this.simNChanceK();
+		}
+
 	}
 
+	/**
+	 * Implements Least Frequency Used replacement strategy.
+	 */
 	private void simLFU() {
 
 		BufferedReader reader;
@@ -226,6 +234,13 @@ public class SimulatorClient extends Thread {
 		}
 	}
 
+	/**
+	 * 
+	 * @param reqBlock Data block being requested
+	 * @param freq
+	 * @param pattern_index
+	 * @return
+	 */
 	private Object[] updateLocalCacheLFU(int reqBlock,
 			Map<Integer, Integer> freq, int pattern_index) {
 
@@ -429,6 +444,14 @@ public class SimulatorClient extends Thread {
 		}
 	}
 
+	/**
+	 * 
+	 * @param reqBlock Data block being requested
+	 * @param indexArray
+	 * @param accessCounter
+	 * @param pattern_index
+	 * @return
+	 */
 	private Object[] updateLocalCacheLRU(int reqBlock,
 			ArrayList<Integer> indexArray, int accessCounter, int pattern_index) {
 
@@ -509,19 +532,18 @@ public class SimulatorClient extends Thread {
 				scanner.useDelimiter("\n");
 				while (scanner.hasNext()) {
 					String data = scanner.next();
-					int reqBlock = Integer.parseInt(data);
+					String[] parts = data.split(",");
+					int reqBlock = Integer.parseInt(parts[0]);
+					int pat_index = Integer.parseInt(parts[1]);
 
 					int clientNum = this.clientNumber;
 					List<Integer> client_data = this.getClientCache();
 					SimulatorContentManager.lookUpTable.put(this.clientNumber,
 							client_data);
 
-					logFile.writeToFile(this.clientNumber, "lookup table: "
-							+ SimulatorContentManager.lookUpTable);
-
 					if (clientCache.cache.size() < clientBlockSize) {
 						clientCache.cache.add(reqBlock);
-						// clientCache.pattern_index.add(e)
+						clientCache.pattern_index.add(pat_index);
 					}
 
 					else {
@@ -563,12 +585,13 @@ public class SimulatorClient extends Thread {
 										logFile.writeToFile(clientNum,
 												"Got data from: " + whoHasBlock);
 										this.NeighborcacheHits++;
-										updateLocalCache(reqBlock);
+										updateLocalCache(reqBlock, pat_index);
 									}
 
 									else {
 										goToServer(clientNum, reqBlock);
-										List<Integer> localCacheUpdated = updateLocalCache(reqBlock);
+										List<Integer> localCacheUpdated = updateLocalCache(
+												reqBlock, pat_index);
 										SimulatorContentManager
 												.updateContentManager(
 														clientNum, reqBlock,
@@ -583,7 +606,8 @@ public class SimulatorClient extends Thread {
 											reqBlock, clientNum);
 									if (checkFalseMiss == -1) {
 										goToServer(clientNum, reqBlock);
-										List<Integer> localCacheUpdated = updateLocalCache(reqBlock);
+										List<Integer> localCacheUpdated = updateLocalCache(
+												reqBlock, pat_index);
 										SimulatorContentManager
 												.updateContentManager(
 														clientNum, reqBlock,
@@ -591,7 +615,7 @@ public class SimulatorClient extends Thread {
 														logFile);
 									} else {
 										this.NeighborcacheHits++;
-										updateLocalCache(reqBlock);
+										updateLocalCache(reqBlock, pat_index);
 									}
 								}
 							}
@@ -607,13 +631,33 @@ public class SimulatorClient extends Thread {
 		}
 	}
 
-	private List<Integer> updateLocalCache(int req_data) {
+	private List<Integer> updateLocalCache(int reqBlock, int pattern_index) {
 		Random random = new Random();
 		int indexOfwhatToReplace = random.nextInt(clientBlockSize - 1) + 1;
+		int whatToRemove = clientCache.cache.get(indexOfwhatToReplace);
+		int pat_index = clientCache.pattern_index.get(indexOfwhatToReplace);
+
+		synchronized (clientCache.pattern_index) {
+			Iterator<Integer> iter = clientCache.pattern_index.iterator();
+
+			while (iter.hasNext()) {
+				int p = iter.next();
+				if (p == pat_index) {
+					int partOfBlock = clientCache.pattern_index.indexOf(p);
+					clientCache.cache.remove(partOfBlock);
+					iter.remove();
+
+				}
+
+			}
+			clientCache.cache.add(reqBlock);
+			clientCache.pattern_index.add(pattern_index);
+		}
+
 		if (clientCache.cache.size() < clientBlockSize) {
-			clientCache.cache.add(req_data);
+			clientCache.cache.add(reqBlock);
 		} else {
-			clientCache.cache.set(indexOfwhatToReplace, req_data);
+			clientCache.cache.set(indexOfwhatToReplace, reqBlock);
 		}
 		return clientCache.cache;
 	}
@@ -622,9 +666,9 @@ public class SimulatorClient extends Thread {
 	 * Search data in client's local cache
 	 * */
 	private boolean searchLocalCache(int req_data) {
-		logFile.writeToFile(this.clientNumber, "Searching local cache");
+		logFile.writeToFile(this.clientNumber, "Searching local cache ");
 		for (int i = 0; i < clientCache.cache.size(); i++) {
-			if (clientCache.cache.get(i) == req_data) {
+			if (this.clientCache.cache.get(i) == req_data) {
 				return true;
 			}
 		}
@@ -733,12 +777,23 @@ public class SimulatorClient extends Thread {
 		}
 	}
 
-	private synchronized void updateDataReqCount() {
+	/**
+	 * 
+	 * @return updated data request counter.
+	 */
+	private synchronized int updateDataReqCount() {
 		synchronized (SimulatorConstants.DATAREQUESTS) {
 			SimulatorConstants.DATAREQUESTS += 1;
 		}
+		return SimulatorConstants.DATAREQUESTS;
 	}
 
+	/**
+	 * 
+	 * @param reqBlock Data block being requested
+	 * @param pattern_index
+	 * @return
+	 */
 	private List<Integer> updateLocalCacheFIFO(int reqBlock, int pattern_index) {
 		if (clientCache.cache.size() < clientBlockSize) {
 			clientCache.cache.add(reqBlock);
@@ -773,7 +828,7 @@ public class SimulatorClient extends Thread {
 
 	/**
 	 * 
-	 * @param reqBlock
+	 * @param reqBlock Data block being requested
 	 *            : Data I want
 	 * @param whoAskedForBlock
 	 *            : Client that asked for data
@@ -796,7 +851,7 @@ public class SimulatorClient extends Thread {
 
 	/**
 	 * 
-	 * @param reqBlock
+	 * @param reqBlock Data block being requested
 	 *            : Data I want
 	 * @param whoAskedForBlock
 	 *            : Client that asked for data
@@ -826,7 +881,7 @@ public class SimulatorClient extends Thread {
 	 *            : Client that has the data
 	 * @param whoAskedForBlock
 	 *            : Client that asked for data
-	 * @param reqBlock
+	 * @param reqBlock Data block being requested
 	 *            : Data I want
 	 * @return data if found else -1
 	 */
@@ -863,8 +918,10 @@ public class SimulatorClient extends Thread {
 				mytickCount, SimulatorConstants.SERVER_ALGORITHM);
 	}
 
+	/**
+	 * Implements NChance replacement strategy
+	 */
 	private synchronized void simNChance() {
-
 		List<Integer> client_data = this.getClientCache();
 		SimulatorContentManager.lookUpTable.put(this.clientNumber, client_data);
 		BufferedReader reader;
@@ -880,12 +937,8 @@ public class SimulatorClient extends Thread {
 							+ SimulatorConstants.CLIENTS + "_"
 							+ this.clientNumber + ".csv"));
 
-			// reader = new BufferedReader(new FileReader("5/"
-			// + SimulatorConstants.FILEPREFIX + this.clientNumber
-			// + ".csv"));
-
 			while ((line = reader.readLine()) != null) {
-				updateDataReqCount();
+				int numReq = updateDataReqCount();
 				scanner = new Scanner(line);
 				scanner.useDelimiter("\n");
 				while (scanner.hasNext()) {
@@ -904,9 +957,9 @@ public class SimulatorClient extends Thread {
 							+ this.clientNumber + " is requesting the data "
 							+ reqBlock);
 
-					if (clientCache.cache.size() < clientBlockSize) {
-						// System.out.println(this.clientNumber);
+					logFile.writeToFile(this.clientNumber, "Requests " + numReq);
 
+					if (clientCache.cache.size() < clientBlockSize) {
 						clientCache.cache.add(reqBlock);
 						clientCache.pattern_index.add(pattern_num);
 					}
@@ -984,8 +1037,14 @@ public class SimulatorClient extends Thread {
 		}
 	}
 
-	private synchronized Object[] updateLocalCacheNChance(int reqBlock,
-			int p) {
+	/**
+	 * 
+	 * @param reqBlock Data block being requested
+	 * @param p
+	 * @return
+	 */
+	private synchronized Object[] updateLocalCacheNChance(int reqBlock, int p) {
+		ArrayList<Double> x = new ArrayList<Double>();
 		Object[] returnValues = new Object[3];
 		ArrayList<Integer> allClients = new ArrayList<Integer>();
 		int numClients = SimulatorContentManager.allClients.length;
@@ -1010,6 +1069,8 @@ public class SimulatorClient extends Thread {
 
 			synchronized (clientCache.pattern_index) {
 				synchronized (SimulatorContentManager.allClients) {
+					logFile.writeToFile(this.clientNumber, ""
+							+ this.clientCache.cache);
 					ArrayList<Integer> exists = new ArrayList<Integer>();
 					ArrayList<Integer> block = new ArrayList<Integer>();
 					ArrayList<Integer> block_p = new ArrayList<Integer>();
@@ -1046,9 +1107,342 @@ public class SimulatorClient extends Thread {
 						int v = block.get(i);
 						newP.add(v);
 					}
+
+					if (!SimulatorContentManager.frequencyCounter
+							.containsKey(newP)) {
+						SimulatorContentManager.frequencyCounter.put(newP, 1);
+					} else {
+						int value = SimulatorContentManager.frequencyCounter
+								.get(newP);
+						SimulatorContentManager.frequencyCounter.put(newP,
+								value + 1);
+					}
+
+					int freq = SimulatorContentManager.frequencyCounter
+							.get(newP);
+
 					if (!SimulatorContentManager.blockArrayCounter
 							.containsKey(newP)) {
 						SimulatorContentManager.blockArrayCounter.put(newP, 3);
+					}
+
+					Integer[] temp = new Integer[2];
+
+					if (exists.contains(-1)) {
+						int r = new Random().nextInt(allClients.size());
+						int whereTosendTo = allClients.get(r);
+						logFile.writeToFile(this.clientNumber, "unique");
+						logFile.writeToFile(this.clientNumber, "c " + exists);
+						logFile.writeToFile(this.clientNumber, "b " + block);
+						logFile.writeToFile(this.clientNumber, "ppp " + block_p);
+
+						if (SimulatorContentManager.blockArrayCounter.get(newP) > 0) {
+							for (int b : block) {
+								int in = clientCache.cache.indexOf(b);
+								int p1 = clientCache.pattern_index.get(in);
+
+								temp[0] = b;
+								temp[1] = p1;
+
+								if (!SimulatorContentManager.blockArrayCounter
+										.containsKey(newP)) {
+									SimulatorContentManager.blockArrayCounter
+											.put(newP, 3);
+								}
+
+								SimulatorContentManager.allClients[whereTosendTo]
+										.updateLocalCacheFIFO(b, pat_index);
+
+								logFile.writeToFile(this.clientNumber,
+										"Adding " + b + " to " + whereTosendTo);
+
+								clientCache.cache.remove(in);
+								clientCache.pattern_index.remove(in);
+
+							}
+
+							int value = SimulatorContentManager.blockArrayCounter
+									.get(newP);
+							SimulatorContentManager.blockArrayCounter.put(newP,
+									value - 1);
+						}
+
+						else {
+							SimulatorContentManager.blockArrayCounter
+									.remove(newP);
+							for (int b : block) {
+								int in = clientCache.cache.indexOf(b);
+								int p1 = clientCache.pattern_index.get(in);
+
+								logFile.writeToFile(this.clientNumber,
+										"Survived enough times!");
+								clientCache.cache.remove(in);
+								clientCache.pattern_index.remove(in);
+							}
+						}
+					}
+
+					else {
+						logFile.writeToFile(this.clientNumber, "not unique");
+						logFile.writeToFile(this.clientNumber, "p " + exists);
+						logFile.writeToFile(this.clientNumber, "b " + block);
+						for (int b : block) {
+							int in = clientCache.cache.indexOf(b);
+							clientCache.cache.remove(in);
+							clientCache.pattern_index.remove(in);
+						}
+					}
+				}
+			}
+
+			if (clientCache.cache.size() < clientBlockSize) {
+				clientCache.cache.add(reqBlock);
+				clientCache.pattern_index.add(p);
+				logFile.writeToFile(this.clientNumber, "XXXXXXXXXXXXXXX "
+						+ clientCache.cache.indexOf(reqBlock));
+				logFile.writeToFile(this.clientNumber, "YYYYYYYYYYYYYYY "
+						+ clientCache.pattern_index.indexOf(p));
+				logFile.writeToFile(this.clientNumber, "Cache: "
+						+ clientCache.cache);
+				logFile.writeToFile(this.clientNumber, "Pattern Array: "
+						+ clientCache.pattern_index);
+
+			}
+
+			returnValues[0] = SimulatorContentManager.blockArrayCounter;
+			returnValues[1] = clientCache.cache;
+		}
+
+		return returnValues;
+
+	}
+
+	/**
+	 * Implements NChance-K replacement strategy
+	 */
+	private synchronized void simNChanceK() {
+		List<Integer> client_data = this.getClientCache();
+		SimulatorContentManager.lookUpTable.put(this.clientNumber, client_data);
+		BufferedReader reader;
+
+		try {
+			int c = 0;
+			String line = null;
+			Scanner scanner = null;
+
+			reader = new BufferedReader(new FileReader(
+					"/Users/rajashreemaiya/Documents/workspace/Cache-Simulator-1/Patterns/"
+							+ SimulatorConstants.FILEPREFIX
+							+ SimulatorConstants.CLIENTS + "_"
+							+ this.clientNumber + ".csv"));
+
+			while ((line = reader.readLine()) != null) {
+				int numReq = updateDataReqCount();
+				scanner = new Scanner(line);
+				scanner.useDelimiter("\n");
+				while (scanner.hasNext()) {
+
+					String data = scanner.next();
+					String[] parts = data.split(",");
+					int reqBlock = Integer.parseInt(parts[0]);
+					int pattern_num = Integer.parseInt(parts[1]);
+					Integer[] counter = new Integer[2];
+					counter[0] = reqBlock;
+					counter[1] = pattern_num;
+
+					logFile.writeToFile(this.clientNumber, "\n");
+					logFile.writeToFile(this.clientNumber, "Iteration: " + c);
+					logFile.writeToFile(this.clientNumber, "Client "
+							+ this.clientNumber + " is requesting the data "
+							+ reqBlock);
+
+					logFile.writeToFile(this.clientNumber, "Requests " + numReq);
+
+					if (clientCache.cache.size() < clientBlockSize) {
+						clientCache.cache.add(reqBlock);
+						clientCache.pattern_index.add(pattern_num);
+					}
+
+					else {
+
+						if (searchLocalCache(reqBlock) == true) {
+							this.LocalcacheHits++;
+							mytickCount.setTickCount(SimulatorConstants.SEARCH);
+						}
+
+						else {
+
+							mytickCount
+									.setTickCount(SimulatorConstants.TOCONTEXTMANAGER);
+							mytickCount
+									.setTickCount(SimulatorConstants.FROMCONTEXTMANAGER);
+							int whoHasBlock = SimulatorContentManager
+									.searchNeighborCache(this.clientNumber,
+											reqBlock, logFile);
+							if (whoHasBlock != -1) {
+								int isBlockThere = checkForFalseHits(reqBlock,
+										this.clientNumber, whoHasBlock);
+								if (isBlockThere != -1) {
+									getDataFromNeighbor(whoHasBlock,
+											this.clientNumber, reqBlock);
+									this.NeighborcacheHits++;
+									updateLocalCacheNChanceK(reqBlock,
+											pattern_num, numReq);
+								}
+
+								else {
+									goToServer(this.clientNumber, reqBlock);
+									Object[] localCacheUpdated = updateLocalCacheNChanceK(
+											reqBlock, pattern_num, numReq);
+									SimulatorContentManager
+											.updateContentManager(
+													this.clientNumber,
+													reqBlock,
+													(ArrayList<Integer>) localCacheUpdated[1],
+													logFile);
+
+								}
+							}
+
+							else {
+
+								int checkFalseMiss = checkForFalseMiss(
+										reqBlock, this.clientNumber);
+								if (checkFalseMiss == -1) {
+									goToServer(this.clientNumber, reqBlock);
+									Object[] localCacheUpdated = updateLocalCacheNChanceK(
+											reqBlock, pattern_num, numReq);
+									SimulatorContentManager
+											.updateContentManager(
+													this.clientNumber,
+													reqBlock,
+													(ArrayList<Integer>) localCacheUpdated[1],
+													logFile);
+
+								} else {
+									this.NeighborcacheHits++;
+									updateLocalCacheNChanceK(reqBlock,
+											pattern_num, numReq);
+								}
+							}
+						}
+					}
+				}
+			}
+			reader.close();
+
+		} catch (NumberFormatException | IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	/**
+	 * 
+	 * @param reqBlock Data block being requested
+	 * @param p
+	 * @param requests
+	 * @return
+	 */
+	private synchronized Object[] updateLocalCacheNChanceK(int reqBlock, int p,
+			int requests) {
+		ArrayList<Double> x = new ArrayList<Double>();
+		Object[] returnValues = new Object[3];
+		ArrayList<Integer> allClients = new ArrayList<Integer>();
+		int numClients = SimulatorContentManager.allClients.length;
+
+		for (int i = 0; i < numClients; i++) {
+			allClients.add(SimulatorContentManager.allClients[i].clientNumber);
+		}
+
+		int indexClient = allClients.indexOf(this.clientNumber);
+		allClients.remove(indexClient);
+
+		synchronized (SimulatorContentManager.lock) {
+			ListIterator<Integer> iter = clientCache.pattern_index
+					.listIterator();
+
+			int whatToRemove = clientCache.cache.get(0);
+			int pat_index = clientCache.pattern_index.get(0);
+
+			logFile.writeToFile(this.clientNumber, "What to Remove: "
+					+ whatToRemove);
+			logFile.writeToFile(this.clientNumber, "Pattern: " + pat_index);
+
+			synchronized (clientCache.pattern_index) {
+				synchronized (SimulatorContentManager.allClients) {
+					logFile.writeToFile(this.clientNumber, ""
+							+ this.clientCache.cache);
+					ArrayList<Integer> exists = new ArrayList<Integer>();
+					ArrayList<Integer> block = new ArrayList<Integer>();
+					ArrayList<Integer> block_p = new ArrayList<Integer>();
+
+					while (iter.hasNext()) {
+						if (pat_index == iter.next()) {
+
+							logFile.writeToFile(this.clientNumber, "Cache: "
+									+ clientCache.cache);
+							logFile.writeToFile(this.clientNumber,
+									"Pattern Array: "
+											+ clientCache.pattern_index);
+
+							int p_in = iter.nextIndex() - 1;
+
+							int e = clientCache.cache.get(p_in);
+
+							logFile.writeToFile(this.clientNumber, "element: "
+									+ e);
+							logFile.writeToFile(this.clientNumber,
+									"pattern: index " + p_in);
+
+							int a = SimulatorContentManager
+									.searchNeighborCache(this.clientNumber, e,
+											logFile);
+							exists.add(a);
+							block.add(e);
+							block_p.add(pat_index);
+						}
+					}
+
+					ArrayList<Integer> newP = new ArrayList<Integer>();
+					for (int i = 0; i < block.size(); i++) {
+						int v = block.get(i);
+						newP.add(v);
+					}
+
+					if (!SimulatorContentManager.frequencyCounter
+							.containsKey(newP)) {
+						SimulatorContentManager.frequencyCounter.put(newP, 1);
+					} else {
+						int value = SimulatorContentManager.frequencyCounter
+								.get(newP);
+						SimulatorContentManager.frequencyCounter.put(newP,
+								value + 1);
+					}
+
+					int freq = SimulatorContentManager.frequencyCounter
+							.get(newP);
+					logFile.writeToFile(this.clientNumber, freq + " "
+							+ requests + " " + ((double) freq) / requests);
+
+					double occ = freq / (double) requests;
+					DecimalFormat df = new DecimalFormat("#");
+					df.setMaximumFractionDigits(5);
+					double formatted = Double.parseDouble(df.format(occ));
+
+					if (!SimulatorContentManager.blockArrayCounter
+							.containsKey(newP)) {
+						if (formatted > 0.3) {
+							SimulatorContentManager.blockArrayCounter.put(newP,
+									5);
+						}
+
+						else if (formatted > 0.1 && formatted < 0.3) {
+							SimulatorContentManager.blockArrayCounter.put(newP,
+									4);
+						} else {
+							SimulatorContentManager.blockArrayCounter.put(newP,
+									3);
+						}
 					}
 
 					Integer[] temp = new Integer[2];

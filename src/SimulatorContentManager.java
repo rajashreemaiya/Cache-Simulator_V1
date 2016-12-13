@@ -1,17 +1,15 @@
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 
 /**
+ * The SimulatorContentManager class is 
+ * the lookup table which contains information 
+ * about each of the clients and the contents of their cache.
  * 
- */
-
-/**
- * @author rmaiya
+ * @author Rajashree K Maiya
  *
  */
 public class SimulatorContentManager {
@@ -20,6 +18,8 @@ public class SimulatorContentManager {
 	static Map<Integer, List> lookUpTable = Collections
 			.synchronizedMap(new HashMap<Integer, List>());
 	static Map<ArrayList<Integer>, Integer> blockArrayCounter;
+	static Map<ArrayList<Integer>, Integer> frequencyCounter;
+	static Map<Integer, Integer> recircArray;
 	static SimulatorClient[] allClients;
 	public static final Object lock = new Object();
 

@@ -3,12 +3,12 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
-/**
- * 
- */
 
 /**
- * @author rmaiya
+ * 
+ * Class to simulate the server cache
+ * 
+ * @author Rajashree K Maiya
  *
  */
 public class SimulatorServer {

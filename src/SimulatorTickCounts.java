@@ -1,9 +1,8 @@
 /**
+ * Class to keep track of ticks to
+ * measure memory access time.
  * 
- */
-
-/**
- * @author rmaiya
+ * @author Rajashree K Maiya
  *
  */
 public class SimulatorTickCounts {

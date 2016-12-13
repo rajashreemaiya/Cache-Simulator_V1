@@ -2,19 +2,17 @@ import java.io.*;
 import java.text.DecimalFormat;
 import java.util.*;
 
-/**
- * Class that drives the simulation.
- * TODO: Settings have to be loaded from the configuration file
- */
+
 
 /**
- * @author rmaiya
+ * Driver class to start the simulation.
+ * 
+ * @author Rajashree K Maiya
  *
  */
 public class SimulatorDriver {
 
 	public static void main(String[] args) {
-
 		Properties prop = new Properties();
 		if (args.length != 1) {
 			System.out.println("Please attach input configuration file");
@@ -61,7 +59,10 @@ public class SimulatorDriver {
 
 					SimulatorContentManager.blockArrayCounter = Collections
 							.synchronizedMap(new HashMap<ArrayList<Integer>, Integer>());
+					
+					SimulatorContentManager.frequencyCounter = Collections.synchronizedMap(new HashMap<ArrayList<Integer>, Integer>());
 
+					SimulatorContentManager.recircArray = Collections.synchronizedMap(new HashMap<Integer, Integer>());
 					ArrayList<Integer> inLocalCache = new ArrayList<Integer>();
 
 					ArrayList<Integer> inNeighborCache = new ArrayList<Integer>();
@@ -93,6 +94,8 @@ public class SimulatorDriver {
 					SimulatorConstants.FILEPREFIX = prop
 							.getProperty("filePrefix");
 					SimulatorConstants.CLIENTS = numOfClients;
+					
+//					SimulatorConstants.CLIENTS = 50;
 
 					SimulatorServer.serverCacheSize = serverMemory;
 					SimulatorServer.setServerMemory();
